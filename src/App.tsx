@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Sparkles, Brain, Award, Laptop, Play, Plus, Trash, Clock, 
   Settings, Users, ChevronRight, Check, Database, RefreshCw, 
-  BookOpen, Crown, Volume2, HelpCircle, Trophy, UserCheck, CheckCircle
+  BookOpen, Crown, Volume2, HelpCircle, Trophy, UserCheck, CheckCircle,
+  Lock, Unlock, Key, ShieldAlert, LogOut
 } from 'lucide-react';
 import { Room, Player, Question, QuizSet } from './types';
 import { MOROCCAN_AVATARS, INITIAL_QUIZZES } from './data';
@@ -12,6 +13,11 @@ import DatabaseVisualizer from './components/DatabaseVisualizer';
 export default function App() {
   // Core game database states
   const [quizzes, setQuizzes] = useState<QuizSet[]>(INITIAL_QUIZZES);
+  
+  // Teacher verification - secure access control exclusively for teachers
+  const [isTeacherAuthenticated, setIsTeacherAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('school_teacher_auth') === 'true';
+  });
   
   // Simulated multiple active browser clients in one UI for easy local testing
   const [activeLayout, setActiveLayout] = useState<'bento' | 'teacher' | 'projector' | 'student' | 'model-ai'>('bento');
@@ -510,7 +516,20 @@ export default function App() {
               <p className="text-[10px] text-slate-400 font-medium">إدارة وعرض التقييمات التفاعلية وحيوية الحصة</p>
             </div>
           </div>
-          <div className="flex bg-indigo-900 border border-indigo-850 p-1 rounded-xl">
+          <div className="flex bg-indigo-900 border border-indigo-850 p-1 rounded-xl items-center gap-2">
+            {isTeacherAuthenticated && (
+              <button 
+                onClick={() => {
+                  setIsTeacherAuthenticated(false);
+                  localStorage.removeItem('school_teacher_auth');
+                }}
+                className="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                title="تسجيل الخروج وإغلاق لوحة الإدارة"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>قفل اللوح 🔐</span>
+              </button>
+            )}
             <button 
               onClick={() => navigateTo('bento')}
               className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-white text-indigo-950 shadow transition-all cursor-pointer"
@@ -521,23 +540,32 @@ export default function App() {
         </header>
 
         {/* Pure Teacher Controls Content */}
-        <main className="flex-1 p-6 max-w-4xl mx-auto w-full">
-          <div className="bg-white rounded-3xl p-6 shadow-xl border border-indigo-100">
-            <TeacherPanel 
-              quizzes={quizzes}
-              selectedQuizId={selectedQuizId}
-              setSelectedQuizId={setSelectedQuizId}
-              onCreateRoom={handleCreateRoom}
-              isCreatingRoom={isCreatingRoom}
-              room={currentRoom}
-              onStartQuiz={handleStartQuiz}
-              onNextAction={handleNextAction}
-              onShowLeaderboard={handleShowLeaderboard}
-              onTerminate={handleTerminateRoom}
-              onSkip={handleSkipQuestionTimer}
-              activeQuestion={activeQuestion}
-            />
-          </div>
+        <main className="flex-1 p-6 max-w-4xl mx-auto w-full flex flex-col justify-center">
+          {!isTeacherAuthenticated ? (
+            <div className="w-full max-w-sm mx-auto">
+              <TeacherPasscodeLock onUnlock={() => {
+                setIsTeacherAuthenticated(true);
+                localStorage.setItem('school_teacher_auth', 'true');
+              }} />
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl p-6 shadow-xl border border-indigo-100">
+              <TeacherPanel 
+                quizzes={quizzes}
+                selectedQuizId={selectedQuizId}
+                setSelectedQuizId={setSelectedQuizId}
+                onCreateRoom={handleCreateRoom}
+                isCreatingRoom={isCreatingRoom}
+                room={currentRoom}
+                onStartQuiz={handleStartQuiz}
+                onNextAction={handleNextAction}
+                onShowLeaderboard={handleShowLeaderboard}
+                onTerminate={handleTerminateRoom}
+                onSkip={handleSkipQuestionTimer}
+                activeQuestion={activeQuestion}
+              />
+            </div>
+          )}
         </main>
 
         <footer className="bg-white py-3.5 border-t border-slate-100 text-center text-xs text-slate-450 font-semibold">
@@ -643,23 +671,43 @@ export default function App() {
                   <Laptop className="w-4 h-4 text-indigo-300" />
                   <h3 className="font-bold text-sm">لوحة تحكم الأستاذ (البينتو)</h3>
                 </div>
-                <span className="text-[10px] bg-indigo-800 text-indigo-200 px-2 py-0.5 rounded-full font-bold">بوابة المعارك</span>
+                {isTeacherAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setIsTeacherAuthenticated(false);
+                      localStorage.removeItem('school_teacher_auth');
+                    }}
+                    className="text-[10px] bg-red-650 hover:bg-red-700 bg-rose-600 text-white px-2 py-0.5 rounded-full font-bold transition-colors cursor-pointer"
+                    title="قفل لوحة الإشراف"
+                  >
+                    قفل 🔐
+                  </button>
+                ) : (
+                  <span className="text-[10px] bg-indigo-800 text-indigo-200 px-2 py-0.5 rounded-full font-bold">بوابة المعارك 🔐</span>
+                )}
               </div>
-              <div className="p-5 flex-1 flex flex-col space-y-4">
-                <TeacherPanel 
-                  quizzes={quizzes}
-                  selectedQuizId={selectedQuizId}
-                  setSelectedQuizId={setSelectedQuizId}
-                  onCreateRoom={handleCreateRoom}
-                  isCreatingRoom={isCreatingRoom}
-                  room={currentRoom}
-                  onStartQuiz={handleStartQuiz}
-                  onNextAction={handleNextAction}
-                  onShowLeaderboard={handleShowLeaderboard}
-                  onTerminate={handleTerminateRoom}
-                  onSkip={handleSkipQuestionTimer}
-                  activeQuestion={activeQuestion}
-                />
+              <div className="p-5 flex-1 flex flex-col space-y-4 justify-center">
+                {!isTeacherAuthenticated ? (
+                  <TeacherPasscodeLock onUnlock={() => {
+                    setIsTeacherAuthenticated(true);
+                    localStorage.setItem('school_teacher_auth', 'true');
+                  }} />
+                ) : (
+                  <TeacherPanel 
+                    quizzes={quizzes}
+                    selectedQuizId={selectedQuizId}
+                    setSelectedQuizId={setSelectedQuizId}
+                    onCreateRoom={handleCreateRoom}
+                    isCreatingRoom={isCreatingRoom}
+                    room={currentRoom}
+                    onStartQuiz={handleStartQuiz}
+                    onNextAction={handleNextAction}
+                    onShowLeaderboard={handleShowLeaderboard}
+                    onTerminate={handleTerminateRoom}
+                    onSkip={handleSkipQuestionTimer}
+                    activeQuestion={activeQuestion}
+                  />
+                )}
               </div>
             </div>
 
@@ -781,7 +829,16 @@ export default function App() {
         )}
 
         {/* AI Generator Panel tab */}
-        {(activeLayout === 'model-ai' || activeLayout === 'bento') && (
+        {activeLayout === 'model-ai' && !isTeacherAuthenticated && (
+          <div className="max-w-md mx-auto my-12">
+            <TeacherPasscodeLock onUnlock={() => {
+              setIsTeacherAuthenticated(true);
+              localStorage.setItem('school_teacher_auth', 'true');
+            }} />
+          </div>
+        )}
+
+        {((activeLayout === 'model-ai' && isTeacherAuthenticated) || (activeLayout === 'bento' && isTeacherAuthenticated)) && (
           <div className="mt-8">
             <AIGenerator onQuizAdded={handleNewQuizAdded} />
           </div>
@@ -1822,6 +1879,157 @@ function StudentDevice({
   return (
     <div className="text-center py-12 text-slate-400 text-xs">
       جاري تحميل حوار الربط الذاتي...
+    </div>
+  );
+}
+
+// -------------------------------------------------------------
+// CHILD COMPONENT 8: TEACHER PASSCODE LOCK GATOR
+// -------------------------------------------------------------
+interface TeacherPasscodeLockProps {
+  onUnlock: () => void;
+  onCancel?: () => void;
+}
+
+function TeacherPasscodeLock({ onUnlock, onCancel }: TeacherPasscodeLockProps) {
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (pin.trim() === '2026') {
+      onUnlock();
+      setError(null);
+    } else {
+      setError('❌ رمز المرور غير صحيح! يرجى إدخال الرمز الصحيح الخاص بالمعلم.');
+    }
+  };
+
+  const pressKey = (num: string) => {
+    setError(null);
+    if (pin.length < 6) {
+      setPin(prev => prev + num);
+    }
+  };
+
+  const handleClear = () => {
+    setPin('');
+    setError(null);
+  };
+
+  const handleBackspace = () => {
+    setPin(prev => prev.slice(0, -1));
+    setError(null);
+  };
+
+  return (
+    <div className="bg-white border-2 border-indigo-50 rounded-3xl p-6 shadow-xl space-y-6 text-center max-w-sm mx-auto my-2 transition-all" dir="rtl">
+      <div className="flex flex-col items-center gap-3">
+        <div className="bg-indigo-50 p-4 rounded-full border border-indigo-100 text-indigo-650 relative">
+          <Lock className="w-8 h-8 animate-pulse text-indigo-600" />
+          <div className="absolute top-1 right-1 w-3.5 h-3.5 bg-rose-500 rounded-full border-2 border-white"></div>
+        </div>
+        <div>
+          <h3 className="font-extrabold text-base text-slate-900 leading-snug">بوابة الأستاذ الموصدة آمنياً 🔐</h3>
+          <p className="text-[11px] text-slate-500 font-medium mt-1">
+            مغلق لأجل الحماية الصفية البيداغوجية. يرجى إثبات هويتك كمعلم/مُشرف للولوج.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="relative">
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => {
+              setError(null);
+              setPin(e.target.value);
+            }}
+            placeholder="أدخل رمز المرور PIN"
+            className="w-full text-center tracking-[0.4em] font-mono font-black text-xl bg-slate-50 border-2 border-slate-200 focus:border-indigo-500 focus:ring focus:ring-indigo-150 outline-none p-3.5 rounded-2xl transition-all"
+            autoFocus
+          />
+          {pin && (
+            <button 
+              type="button" 
+              onClick={handleClear}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 hover:text-slate-600 bg-slate-200/50 px-2 py-1 rounded-lg"
+            >
+              مسح
+            </button>
+          )}
+        </div>
+
+        {error && (
+          <p className="text-[11px] text-rose-600 font-bold flex items-center justify-center gap-1.5 leading-relaxed bg-rose-50/50 p-2 rounded-xl">
+            <ShieldAlert className="w-4 h-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
+          </p>
+        )}
+
+        <div className="grid grid-cols-3 gap-1.5">
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((num) => (
+            <button
+              key={num}
+              type="button"
+              onClick={() => pressKey(num)}
+              className="bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-800 font-extrabold text-base py-2 rounded-xl transition-all font-mono cursor-pointer"
+            >
+              {num}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={handleBackspace}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs py-2 rounded-xl transition-all cursor-pointer"
+          >
+            حذف ⌫
+          </button>
+          <button
+            type="button"
+            onClick={() => pressKey('0')}
+            className="bg-slate-50 hover:bg-slate-100 border border-slate-200/50 text-slate-800 font-extrabold text-base py-2 rounded-xl transition-all font-mono cursor-pointer"
+          >
+            0
+          </button>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs py-2 rounded-xl transition-all cursor-pointer"
+          >
+            مسح كلي
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          disabled={!pin}
+          className={`w-full font-black text-xs py-3 rounded-xl cursor-pointer shadow-md transition-all flex items-center justify-center gap-1.5 ${
+            pin 
+              ? 'bg-gradient-to-r from-indigo-700 to-indigo-650 text-white hover:shadow-lg hover:from-indigo-600' 
+              : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+          }`}
+        >
+          <Unlock className="w-4 h-4" />
+          <span>تأكيد رمز المرور والدخول 🚀</span>
+        </button>
+      </form>
+
+      <div className="border-t border-slate-100 pt-3 space-y-1">
+        <p className="text-[9px] text-slate-400 font-bold leading-relaxed">
+          💡 الرمز التجريبي لتأكيد هوية الأستاذ: <span className="font-mono text-indigo-600 underline font-black text-xs">2026</span>
+        </p>
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            type="button"
+            className="text-[10px] text-slate-500 hover:text-slate-800 underline block mx-auto font-medium"
+          >
+            الرجوع للخارج
+          </button>
+        )}
+      </div>
     </div>
   );
 }
