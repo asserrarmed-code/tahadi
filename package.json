@@ -1,20 +1,30 @@
 {
-  "name": "madrassati-interactive",
+  "name": "moroccan-classroom-kahoot",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "node server.ts",
+    "build": "tsc && vite build",
+    "lint": "tsc --noEmit",
+    "start": "node server.ts"
   },
   "dependencies": {
-
+    "@google/genai": "latest",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@tailwindcss/vite": "latest",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.7",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.2.2",
+    "vite": "^5.1.0"
   }
 }

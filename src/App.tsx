@@ -597,7 +597,7 @@ export default function App() {
           <button 
             onClick={() => navigateTo('teacher')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeLayout === 'teacher' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-indigo-600'
+              (activeLayout as string) === 'teacher' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-indigo-600'
             }`}
           >
             👨‍🏫 الأستاذ
@@ -605,7 +605,7 @@ export default function App() {
           <button 
             onClick={() => navigateTo('projector')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeLayout === 'projector' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-teal-600'
+              (activeLayout as string) === 'projector' ? 'bg-teal-600 text-white shadow-sm' : 'text-slate-600 hover:text-teal-600'
             }`}
           >
             📺 البروجيكتور
@@ -613,7 +613,7 @@ export default function App() {
           <button 
             onClick={() => navigateTo('student')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              activeLayout === 'student' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:text-rose-600'
+              (activeLayout as string) === 'student' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-600 hover:text-rose-600'
             }`}
           >
             🎒 التلميذ
@@ -714,7 +714,7 @@ export default function App() {
         )}
 
         {/* Solo layouts (Bypassed if loaded directly, but preserved for development layout selector fallback) */}
-        {activeLayout === 'teacher' && (
+        {(activeLayout as string) === 'teacher' && (
           <div className="bg-white rounded-3xl shadow-xl border border-indigo-100 overflow-hidden p-6 max-w-4xl mx-auto">
             <h3 className="font-bold text-xl text-slate-900 border-b pb-4 mb-4 flex items-center gap-2">
               <Laptop className="w-6 h-6 text-indigo-600" />
@@ -737,7 +737,7 @@ export default function App() {
           </div>
         )}
 
-        {activeLayout === 'projector' && (
+        {(activeLayout as string) === 'projector' && (
           <div className="bg-slate-900 rounded-3xl shadow-2xl border-8 border-slate-950 overflow-hidden p-8 max-w-6xl mx-auto min-h-[600px] flex flex-col justify-between">
             <div className="border-b border-slate-800 pb-3 mb-4 flex justify-between items-center text-slate-400 text-sm">
               <span className="font-bold flex items-center gap-2">
@@ -754,7 +754,7 @@ export default function App() {
           </div>
         )}
 
-        {activeLayout === 'student' && (
+        {(activeLayout as string) === 'student' && (
           <div className="max-w-md mx-auto bg-slate-50 rounded-[2.5rem] border-8 border-slate-200 overflow-hidden shadow-2xl min-h-[620px] flex flex-col justify-between">
             <div className="bg-rose-600 p-4 pt-7 text-white text-center font-bold text-sm relative">
               ثقافة مغربية مرحة - جهاز المتعلم البطل 🦁

@@ -1,0 +1,8 @@
+{
+  "name": "مسابقات القسم التفاعلي",
+  "description": "منصة مراجعة تفاعلية مغربية مخصصة لأقسام التعليم الأولي والابتدائي، مستوحاة من كاهوت مع مزامنة متكاملة ومولد ذكي للأسئلة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
