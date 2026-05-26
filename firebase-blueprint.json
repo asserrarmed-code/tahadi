@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "PlayerRef": {
+      "title": "Player Reference",
+      "description": "Synced state representing each playing student or team in the room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "avatar": { "type": "string" },
+        "score": { "type": "integer" },
+        "answeredThisRound": { "type": "boolean" },
+        "isCorrect": { "type": "boolean" },
+        "pointsGained": { "type": "integer" },
+        "answerIndex": { "type": "integer" },
+        "writtenAnswer": { "type": "string" },
+        "timeTaken": { "type": "integer" },
+        "streak": { "type": "integer" },
+        "usedFiftyFifty": { "type": "boolean" },
+        "usedExtraTime": { "type": "boolean" },
+        "usedHint": { "type": "boolean" }
+      },
+      "required": ["id", "name", "score"]
+    },
+    "QuestionRef": {
+      "title": "Question Reference",
+      "description": "Educational query structure including question type (MCQ, written, or oral).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "type": "string" },
+        "level": { "type": "string" },
+        "subComponent": { "type": "string" },
+        "text": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctIndex": { "type": "integer" },
+        "points": { "type": "integer" },
+        "timeLimit": { "type": "integer" },
+        "type": { "type": "string", "enum": ["mcq", "written", "oral"] }
+      },
+      "required": ["id", "text", "points", "timeLimit"]
+    },
+    "QuizSetRef": {
+      "title": "Quiz Set",
+      "description": "A set of questions mapped to school curriculum standards.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "level": { "type": "string" },
+        "subject": { "type": "string" },
+        "questions": { "type": "array", "items": { "$ref": "QuestionRef" } }
+      },
+      "required": ["id", "title"]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Game room structure that synchronizes teacher, students, and projection screen dynamically.",
+      "type": "object",
+      "properties": {
+        "pin": { "type": "string" },
+        "state": { "type": "string", "enum": ["waiting", "question_countdown", "question_active", "question_result", "leaderboard", "finished"] },
+        "currentQuestionIndex": { "type": "integer" },
+        "currentQuestionId": { "type": "string" },
+        "secondsRemaining": { "type": "integer" },
+        "revealAnswer": { "type": "boolean" },
+        "activeQuizId": { "type": "string" },
+        "activeQuiz": { "$ref": "QuizSetRef" },
+        "players": { "type": "object" },
+        "questionStartedAt": { "type": "integer" }
+      },
+      "required": ["pin", "state", "currentQuestionIndex"]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomId}": {
+      "schema": "Room",
+      "description": "Active real-time synchronizing classrooms using direct onSnapshot binding."
+    }
+  }
+}

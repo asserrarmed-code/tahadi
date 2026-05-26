@@ -311,10 +311,10 @@ app.post('/api/room/:pin/activate-question', (req, res) => {
   res.json({ success: true, room });
 });
 
-// Submit Student Answer (Interactive student clicking)
+// Submit Student Answer (Interactive student clicking or textbox sending)
 app.post('/api/room/:pin/answer', (req, res) => {
   const { pin } = req.params;
-  const { playerId, answerIndex } = req.body;
+  const { playerId, answerIndex, writtenAnswer } = req.body;
 
   const room = rooms_db[String(pin).trim()];
   if (!room) return res.status(404).json({ success: false, error: 'الحصة انتهت أو غير صحيحة!' });
@@ -337,19 +337,31 @@ app.post('/api/room/:pin/answer', (req, res) => {
   // Record time taken
   const timeTaken = Date.now() - (room.questionStartedAt || Date.now());
   const maxTimeMs = q.timeLimit * 1000;
-  const correct = Number(answerIndex) === q.correctIndex;
-
-  // Calculate speed factor points logic:
-  // Pure Kahoot formula: points = rounded up based on speed.
-  // Maximum points (e.g., 1000) for instant answer, decreasing to 500 points for answering right at the last second.
+  
+  let correct = false;
   let pointsGained = 0;
-  if (correct) {
-    const ratio = Math.max(0, Math.min(1, timeTaken / maxTimeMs));
-    pointsGained = Math.round(q.points * (1 - ratio / 2)); // ranges from 100% to 50%
+
+  const questionType = q.type || 'mcq';
+
+  if (questionType === 'written') {
+    const studentText = (writtenAnswer || '').trim().toLowerCase();
+    const correctSolution = q.options[q.correctIndex || 0].trim().toLowerCase();
+    correct = studentText === correctSolution || correctSolution.includes(studentText) && studentText.length > 0;
+    if (correct) {
+      pointsGained = q.points;
+    }
+  } else {
+    correct = Number(answerIndex) === q.correctIndex;
+    if (correct) {
+      const ratio = Math.max(0, Math.min(1, timeTaken / maxTimeMs));
+      pointsGained = Math.round(q.points * (1 - ratio / 2)); // ranges from 100% to 50%
+    }
   }
 
   player.answeredThisRound = true;
-  player.answerIndex = Number(answerIndex);
+  player.answerIndex = answerIndex !== undefined ? Number(answerIndex) : null;
+  // @ts-ignore
+  player.writtenAnswer = writtenAnswer || '';
   player.isCorrect = correct;
   player.pointsGained = pointsGained;
   player.score += pointsGained;
@@ -362,6 +374,7 @@ app.post('/api/room/:pin/answer', (req, res) => {
 
   // Check if ALL players have answered. If so, automatically end the question timer
   const totalPlayers = Object.keys(room.players).length;
+  // @ts-ignore
   const answeredCount = Object.values(room.players).filter(p => p.answeredThisRound).length;
 
   if (answeredCount >= totalPlayers && totalPlayers > 0) {
@@ -372,6 +385,57 @@ app.post('/api/room/:pin/answer', (req, res) => {
   }
 
   res.json({ success: true, player, room });
+});
+
+// Admin state update override
+app.post('/api/room/:pin/state-update', (req, res) => {
+  const { pin } = req.params;
+  const updates = req.body;
+  const room = rooms_db[String(pin).trim()];
+  if (!room) return res.status(404).json({ success: false, error: 'الغرفة غير موجودة' });
+
+  Object.assign(room, updates);
+  res.json({ success: true, room });
+});
+
+// Admin Manual Score Adjust (give/draw points to team)
+app.post('/api/room/:pin/adjust-points', (req, res) => {
+  const { pin } = req.params;
+  const { playerId, amount } = req.body;
+  const room = rooms_db[String(pin).trim()];
+  if (!room) return res.status(404).json({ success: false, error: 'الغرفة غير موجودة' });
+
+  const player = room.players[playerId];
+  if (player) {
+    player.score = Math.max(0, player.score + Number(amount));
+    console.log(`Manual Score shift for ${player.name}: ${amount}. New total: ${player.score}`);
+  }
+  res.json({ success: true, room });
+});
+
+// Student active Powerup Use
+app.post('/api/room/:pin/powerup', (req, res) => {
+  const { pin } = req.params;
+  const { playerId, powerupType } = req.body;
+  const room = rooms_db[String(pin).trim()];
+  if (!room) return res.status(404).json({ success: false, error: 'الغرفة غير موجودة' });
+
+  const player = room.players[playerId];
+  if (player) {
+    if (powerupType === 'fiftyFifty') {
+      // @ts-ignore
+      player.usedFiftyFifty = true;
+    } else if (powerupType === 'extraTime') {
+      // @ts-ignore
+      player.usedExtraTime = true;
+      room.secondsRemaining = (room.secondsRemaining || 0) + 15;
+    } else if (powerupType === 'hint') {
+      // @ts-ignore
+      player.usedHint = true;
+    }
+    console.log(`Player [${player.name}] triggered powerup: ${powerupType}`);
+  }
+  res.json({ success: true, room });
 });
 
 // Action to Reveal correct Answer instantly (or skip timer)
@@ -420,6 +484,8 @@ app.post('/api/room/:pin/next', (req, res) => {
       room.players[pid].answerIndex = null;
       room.players[pid].isCorrect = false;
       room.players[pid].pointsGained = 0;
+      // @ts-ignore
+      room.players[pid].writtenAnswer = '';
     }
     
     console.log(`Room [${pin}] preparing next question index ${nextIndex}`);

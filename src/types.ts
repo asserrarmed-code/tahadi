@@ -17,6 +17,12 @@ export interface Player {
   answerIndex: number | null;
   timeTaken: number; // in milliseconds
   streak: number;
+  
+  // Powerups and written data
+  writtenAnswer?: string;
+  usedFiftyFifty?: boolean;
+  usedExtraTime?: boolean;
+  usedHint?: boolean;
 }
 
 export interface Question {
@@ -25,10 +31,11 @@ export interface Question {
   level: string; // e.g., "المستوى الثالث"
   subComponent?: string; // e.g., "التراكيب", "النشاط العلمي"
   text: string;
-  options: string[]; // Exactly 4 options
+  options: string[]; // Exactly 4 options (for written answers, options[correctIndex] serves as the correct string reference)
   correctIndex: number; // 0, 1, 2, or 3
   points: number;
   timeLimit: number; // in seconds
+  type?: 'mcq' | 'written' | 'oral'; // default is 'mcq'
 }
 
 export interface Room {
@@ -41,6 +48,7 @@ export interface Room {
   activeQuizId: string | null;
   players: Record<string, Player>;
   questionStartedAt: number | null; // Timestamp
+  activeQuiz?: QuizSet;
 }
 
 export interface QuizSet {
