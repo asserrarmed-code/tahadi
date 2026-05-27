@@ -7,6 +7,8 @@ import {
 import { Room, Player, Question } from '../types';
 import { listenToRoom, joinPlayer, submitStudentAnswer, usePowerup } from '../lib/firebase';
 import { MOROCCAN_AVATARS } from '../data';
+import { ref, set, onValue } from 'firebase/database';
+import { db, isRealFirebaseConfigured } from '../firebase';
 
 interface StudentViewProps {
   onBackToMain: () => void;
@@ -50,6 +52,27 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
       return () => unsubscribe();
     }
   }, [roomPin, playerId]);
+
+  // Real-time Database currentQuestion listener
+  const [realtimeQuestion, setRealtimeQuestion] = useState<Question | null>(null);
+
+  useEffect(() => {
+    if (roomPin && isRealFirebaseConfigured) {
+      const questionRef = ref(db, `rooms/${roomPin}/currentQuestion`);
+      const unsubscribe = onValue(questionRef, (snapshot) => {
+        if (snapshot.exists()) {
+          setRealtimeQuestion(snapshot.val() as Question);
+        } else {
+          setRealtimeQuestion(null);
+        }
+      }, (err) => {
+        console.warn("RTDB currentQuestion listener error:", err);
+      });
+      return () => unsubscribe();
+    } else {
+      setRealtimeQuestion(null);
+    }
+  }, [roomPin]);
 
   // Handle question reset For inputs and feedback
   useEffect(() => {
@@ -103,6 +126,21 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
     try {
       setHasSubmittedThisRound(true);
       await submitStudentAnswer(currentRoom.pin, playerId, idx);
+
+      if (isRealFirebaseConfigured) {
+        try {
+          const isCorrect = activeQuestion ? (idx === activeQuestion.correctIndex) : false;
+          const respRef = ref(db, `rooms/${currentRoom.pin}/responses/${playerId}`);
+          await set(respRef, {
+            teamName: studentName,
+            selectedAnswer: idx,
+            isCorrect,
+            timestamp: Date.now()
+          });
+        } catch (eRT) {
+          console.error("RTDB student answer sync error:", eRT);
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'خطأ أثناء إرسال الجواب.');
       setHasSubmittedThisRound(false);
@@ -115,6 +153,26 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
     try {
       setHasSubmittedThisRound(true);
       await submitStudentAnswer(currentRoom.pin, playerId, null, writtenInput.trim());
+
+      if (isRealFirebaseConfigured) {
+        try {
+          const studentText = writtenInput.trim().toLowerCase();
+          const correctOptionStr = activeQuestion && activeQuestion.options[activeQuestion.correctIndex || 0] 
+            ? activeQuestion.options[activeQuestion.correctIndex || 0].trim().toLowerCase() 
+            : '';
+          const isCorrect = studentText === correctOptionStr || (correctOptionStr.includes(studentText) && studentText.length > 0);
+          
+          const respRef = ref(db, `rooms/${currentRoom.pin}/responses/${playerId}`);
+          await set(respRef, {
+            teamName: studentName,
+            selectedAnswer: writtenInput.trim(),
+            isCorrect,
+            timestamp: Date.now()
+          });
+        } catch (eRT) {
+          console.error("RTDB student written answer sync error:", eRT);
+        }
+      }
     } catch (e: any) {
       setError(e.message || 'خطأ في إرسال المذكرة المكتوبة.');
       setHasSubmittedThisRound(false);
@@ -161,7 +219,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
   };
 
   // Extract variables
-  const activeQuestion = currentRoom?.currentQuestion || (currentRoom && currentRoom.activeQuiz && currentRoom.currentQuestionIndex >= 0
+  const activeQuestion = realtimeQuestion || currentRoom?.currentQuestion || (currentRoom && currentRoom.activeQuiz && currentRoom.currentQuestionIndex >= 0
     ? currentRoom.activeQuiz.questions[currentRoom.currentQuestionIndex]
     : null);
 
@@ -318,7 +376,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
       )}
 
       {/* COUNTDOWN START */}
-      {currentRoom.state === 'question_countdown' && !currentRoom.currentQuestion && (
+      {currentRoom.state === 'question_countdown' && !activeQuestion && (
         <div className="bg-gradient-to-br from-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-xl text-center py-12 space-y-4 border border-rose-500/20">
           <span className="text-3xl animate-pulse text-amber-300 block">استعد للتحدي القادم! 🔥</span>
           <p className="text-xs text-slate-400 font-bold">بوابة جزيرة {currentRoom.activeSubject || 'التحدي'} تفتح الآن...</p>

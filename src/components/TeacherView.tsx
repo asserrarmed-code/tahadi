@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { Room, Player, Question, QuizSet } from '../types';
 import { createRoom, updateRoom, listenToRoom, adjustPlayerScore, terminateRoom } from '../lib/firebase';
+import { ref, set, update, onValue } from 'firebase/database';
+import { db, isRealFirebaseConfigured } from '../firebase';
 
 interface TeacherViewProps {
   onBackToMain: () => void;
@@ -92,7 +94,27 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         }
         setLoadingRoom(false);
       });
-      return () => unsubscribe();
+
+      // Real-time Database live responses observer
+      let rtdbCleanup = () => {};
+      if (isRealFirebaseConfigured) {
+        const responsesRef = ref(db, `rooms/${activePin}/responses`);
+        rtdbCleanup = onValue(responsesRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            setTeamsResponses(data || {});
+          } else {
+            setTeamsResponses({});
+          }
+        }, (err) => {
+          console.warn("Real-time Database Live responses listener error:", err);
+        });
+      }
+
+      return () => {
+        unsubscribe();
+        rtdbCleanup();
+      };
     } else {
       setCurrentRoom(null);
       setTeamsResponses({});
@@ -643,6 +665,39 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         players: resetPlayers
       });
 
+      if (isRealFirebaseConfigured) {
+        try {
+          const roomDbRef = ref(db, `rooms/${roomPIN}`);
+          const updates: any = {
+            currentQuestion: activeQuestion,
+            currentQuestionIndex: idx,
+            currentQuestionId: activeQuestion.id,
+            state: 'question_countdown',
+            secondsRemaining: 4,
+            revealAnswer: false,
+            responses: {}
+          };
+          for (const pid in resetPlayers) {
+            updates[`players/${pid}/answeredThisRound`] = false;
+            updates[`players/${pid}/answerIndex`] = null;
+            updates[`players/${pid}/writtenAnswer`] = '';
+            updates[`players/${pid}/isCorrect`] = false;
+            updates[`players/${pid}/pointsGained`] = 0;
+          }
+          await update(roomDbRef, updates);
+
+          // Specifically write to rooms/${roomPIN}/currentQuestion
+          const currentQuestionRef = ref(db, `rooms/${roomPIN}/currentQuestion`);
+          await set(currentQuestionRef, activeQuestion);
+
+          // Clear responses
+          const responsesRef = ref(db, `rooms/${roomPIN}/responses`);
+          await set(responsesRef, null);
+        } catch (eRT) {
+          console.error("RTDB broadcast sync error:", eRT);
+        }
+      }
+
       console.log(`🚀 Successfully broadcasted question id ${activeQuestion.id} to room ${roomPIN}`);
     } catch (err) {
       console.error("❌ Fatal Error in handleBroadcast:", err);
@@ -714,8 +769,10 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     try {
       // Direct optimistic state update for snappy UI feedback
       const updatedPlayers = { ...currentRoom.players };
+      const currentScore = updatedPlayers[pid]?.score || 0;
+      const targetScore = Math.max(0, currentScore + amount);
       if (updatedPlayers[pid]) {
-        updatedPlayers[pid].score = Math.max(0, updatedPlayers[pid].score + amount);
+        updatedPlayers[pid].score = targetScore;
         setCurrentRoom({
           ...currentRoom,
           players: updatedPlayers
@@ -723,6 +780,20 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
       }
       
       await adjustPlayerScore(currentRoom.pin, pid, amount);
+
+      if (isRealFirebaseConfigured) {
+        try {
+          // Direct real database update paths as requested: rooms/${roomPIN}/teams/${teamId}/score
+          const scoreRef = ref(db, `rooms/${currentRoom.pin}/teams/${pid}/score`);
+          await set(scoreRef, targetScore);
+
+          const playerRef = ref(db, `rooms/${currentRoom.pin}/players/${pid}/score`);
+          await set(playerRef, targetScore);
+        } catch (eRT) {
+          console.error("RTDB score syncing error:", eRT);
+        }
+      }
+
       console.log(`Successfully adjusted score for playerId: ${pid} with amount: ${amount}`);
     } catch (err) {
       console.error("❌ Failed of manual score adjustment in teacher portal:", err);
