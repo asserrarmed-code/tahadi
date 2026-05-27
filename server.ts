@@ -193,6 +193,7 @@ app.post('/api/room/create', (req, res) => {
     secondsRemaining: 0,
     revealAnswer: false,
     activeQuizId: quizSetId || null,
+    activeQuiz: quizSet || undefined,
     players: {},
     questionStartedAt: null,
     // Treasure Island extensions
@@ -255,6 +256,11 @@ app.get('/api/room/:pin', (req, res) => {
     return res.status(404).json({ success: false, error: 'الغرفة غير موجودة' });
   }
 
+  // Hydrate activeQuiz if it is missing or needs updating from our central memory pool
+  if (room.activeQuizId && custom_quizzes_pool[room.activeQuizId]) {
+    room.activeQuiz = custom_quizzes_pool[room.activeQuizId];
+  }
+
   // Handle active question countdown ticking dynamically in full-stack server
   if (room.state === 'question_active' && room.secondsRemaining > 0) {
     const elapsedSeconds = Math.floor((Date.now() - (room.questionStartedAt || Date.now())) / 1000);
@@ -282,7 +288,7 @@ app.get('/api/room/:pin', (req, res) => {
 // Start active Quiz (transition to countdown of 1st question)
 app.post('/api/room/:pin/start', (req, res) => {
   const { pin } = req.params;
-  const { quizSet } = req.body;
+  const { quizSet, currentQuestionIndex, currentQuestionId, activeSubject } = req.body;
 
   const room = rooms_db[String(pin).trim()];
   if (!room) return res.status(404).json({ success: false, error: 'الغرفة غير موجودة' });
@@ -291,6 +297,7 @@ app.post('/api/room/:pin/start', (req, res) => {
   if (quizSet && quizSet.id) {
     custom_quizzes_pool[quizSet.id] = quizSet;
     room.activeQuizId = quizSet.id;
+    room.activeQuiz = quizSet;
   }
 
   const quiz = custom_quizzes_pool[room.activeQuizId || ''];
@@ -298,20 +305,30 @@ app.post('/api/room/:pin/start', (req, res) => {
     return res.status(400).json({ success: false, error: 'عذراً، لم نجد أي أسئلة صالحة لبدء اللعبة!' });
   }
 
-  // Reset players scores to 0
-  for (const pid in room.players) {
-    room.players[pid].score = 0;
-    room.players[pid].streak = 0;
-    room.players[pid].answeredThisRound = false;
+  // Set indices
+  const targetIndex = typeof currentQuestionIndex === 'number' ? currentQuestionIndex : 0;
+  
+  // Reset players scores to 0 only on starting a fresh new game from beginning
+  if (targetIndex === 0 && room.currentQuestionIndex <= 0) {
+    for (const pid in room.players) {
+      room.players[pid].score = 0;
+      room.players[pid].streak = 0;
+      room.players[pid].answeredThisRound = false;
+    }
   }
 
-  room.currentQuestionIndex = 0;
-  room.currentQuestionId = quiz.questions[0].id;
+  room.currentQuestionIndex = targetIndex;
+  room.currentQuestionId = currentQuestionId || quiz.questions[targetIndex]?.id || null;
+  
+  if (activeSubject !== undefined) {
+    room.activeSubject = activeSubject;
+  }
+
   room.state = 'question_countdown';
   room.secondsRemaining = 4; // 3 seconds count plus intro
   room.revealAnswer = false;
   
-  console.log(`Room [${pin}] started quiz [${quiz.title}] with ${quiz.questions.length} questions`);
+  console.log(`Room [${pin}] standard or castle action initiated on quiz [${quiz.title}] index ${targetIndex}`);
   res.json({ success: true, room });
 });
 

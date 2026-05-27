@@ -270,7 +270,12 @@ export async function updateRoom(pin: string, partial: Partial<Room>): Promise<v
 
   if (partial.state === 'question_countdown') {
     endpoint = `/api/room/${pin}/start`;
-    body = { quizSet: partial.activeQuiz || nextRoom.activeQuiz };
+    body = { 
+      quizSet: partial.activeQuiz || nextRoom.activeQuiz,
+      currentQuestionIndex: partial.currentQuestionIndex !== undefined ? partial.currentQuestionIndex : nextRoom.currentQuestionIndex,
+      currentQuestionId: partial.currentQuestionId || nextRoom.currentQuestionId,
+      activeSubject: partial.activeSubject !== undefined ? partial.activeSubject : nextRoom.activeSubject
+    };
   } else if (partial.state === 'question_active') {
     endpoint = `/api/room/${pin}/activate-question`;
   } else if (partial.state === 'question_result') {
