@@ -16,20 +16,27 @@ export default function ProjectorView({ onBackToMain }: ProjectorViewProps) {
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activePin, setActivePin] = useState<string | null>(() => localStorage.getItem('school_projector_active_room_pin'));
 
-  // Monitor room PIN stored in local storage
+  // Sync and listen to the active room whenever activePin changes (on mount and when connected)
   useEffect(() => {
-    const savedPin = localStorage.getItem('school_projector_active_room_pin');
-    if (savedPin) {
-      setPinInput(savedPin);
+    if (activePin) {
+      setPinInput(activePin);
       setLoading(true);
-      const unsubscribe = listenToRoom(savedPin, (room) => {
-        setCurrentRoom(room);
+      const unsubscribe = listenToRoom(activePin, (room) => {
         setLoading(false);
+        if (!room) {
+          setError('تعذر العثور على هذه الحصة. يرجى مراجعة الأستاذ للتأكد من الرقم.');
+          setCurrentRoom(null);
+          return;
+        }
+        setCurrentRoom(room);
       });
       return () => unsubscribe();
+    } else {
+      setCurrentRoom(null);
     }
-  }, []);
+  }, [activePin]);
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,26 +46,15 @@ export default function ProjectorView({ onBackToMain }: ProjectorViewProps) {
       return;
     }
 
-    setLoading(true);
     localStorage.setItem('school_projector_active_room_pin', pinInput.trim());
-    
-    const unsubscribe = listenToRoom(pinInput.trim(), (room) => {
-      setLoading(false);
-      if (!room) {
-        setError('تعذر العثور على هذه الحصة. يرجى مراجعة الأستاذ للتأكد من الرقم.');
-        setCurrentRoom(null);
-        return;
-      }
-      setCurrentRoom(room);
-    });
-
-    return () => unsubscribe();
+    setActivePin(pinInput.trim());
   };
 
   const handleDisconnect = () => {
     localStorage.removeItem('school_projector_active_room_pin');
     setCurrentRoom(null);
     setPinInput('');
+    setActivePin(null);
   };
 
   // State calculations

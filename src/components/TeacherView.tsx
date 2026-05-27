@@ -39,6 +39,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
   // Active Live Session details
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(false);
+  const [activePin, setActivePin] = useState<string | null>(() => localStorage.getItem('school_teacher_active_room_pin'));
 
   // Subcomponents options depending on Subject
   const getSubComponentsForSubject = (subject: string): string[] => {
@@ -66,12 +67,11 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     setSelectedSubComponent(opts[0]);
   }, [selectedSubject]);
 
-  // Attempt to resume session if there is an active PIN in localStorage on mount
+  // Sync and listen to the active room whenever activePin is defined (on mount and when launched live)
   useEffect(() => {
-    const savedPin = localStorage.getItem('school_teacher_active_room_pin');
-    if (savedPin) {
+    if (activePin) {
       setLoadingRoom(true);
-      const unsubscribe = listenToRoom(savedPin, (room) => {
+      const unsubscribe = listenToRoom(activePin, (room) => {
         if (room) {
           setCurrentRoom(room);
           setGameState('live');
@@ -80,13 +80,16 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
           }
         } else {
           localStorage.removeItem('school_teacher_active_room_pin');
+          setActivePin(null);
           setGameState('setup');
         }
         setLoadingRoom(false);
       });
       return () => unsubscribe();
+    } else {
+      setCurrentRoom(null);
     }
-  }, []);
+  }, [activePin]);
 
   // Timer Effect for countdowns and active questions synced to Firebase Realtime / Firestore
   useEffect(() => {
@@ -143,6 +146,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     localStorage.removeItem('school_teacher_auth');
     localStorage.removeItem('school_teacher_active_room_pin');
     setGameState('setup');
+    setActivePin(null);
     setCurrentRoom(null);
   };
 
@@ -580,6 +584,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         currentQuestionId: null,
       });
 
+      setActivePin(randomPin);
       setGameState('live');
     } catch (err) {
       console.error(err);
@@ -667,8 +672,9 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     if (!currentRoom) return;
     if (window.confirm('تحذير! هل أنت متأكد من رغبتك في إغلاق هذه الغرفة وحل المجموعات؟')) {
       await terminateRoom(currentRoom.pin);
-      setCurrentRoom(null);
       localStorage.removeItem('school_teacher_active_room_pin');
+      setActivePin(null);
+      setCurrentRoom(null);
       setGameState('setup');
     }
   };
@@ -1233,7 +1239,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
                         : 'bg-slate-950 border-indigo-950 hover:border-indigo-850'
                     }`}
                   >
-                    <div className="space-y-1.5 min-w-0 flex-1">
+                    <div className="space-y-1.5 min-w-0 flex-1 w-full">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-[9px] bg-amber-450 bg-[#0038A8] text-white font-extrabold px-2 py-0.5 rounded">السؤال {qIndex + 1}</span>
                         <span className="text-[9px] bg-indigo-950 text-indigo-300 font-extrabold px-1.5 py-0.5 rounded">
@@ -1241,18 +1247,16 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
                         </span>
                         <span className="text-[9px] text-teal-300 font-bold">({q.points} نقطة / {q.timeLimit}ث)</span>
                       </div>
-                      <p className="text-xs font-black text-white leading-relaxed truncate" title={q.text}>{q.text}</p>
+                      <p className="text-xs md:text-sm font-bold text-white leading-relaxed whitespace-pre-wrap break-words" title={q.text}>{q.text}</p>
                     </div>
 
                     <button
                       onClick={() => handleBroadcastQuestion(qIndex)}
-                      disabled={isSentThisIndex || totalPlayers === 0}
-                      className={`px-5 py-3 rounded-xl font-bold text-xs shrink-0 cursor-pointer shadow transition-all flex items-center gap-1.5 ${
+                      disabled={isSentThisIndex}
+                      className={`w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs shrink-0 cursor-pointer shadow transition-all flex items-center justify-center gap-1.5 ${
                         isSentThisIndex 
-                          ? 'bg-amber-500 text-slate-950 font-black cursor-default'
-                          : totalPlayers > 0
-                            ? 'bg-[#0038A8] hover:bg-indigo-700 text-white font-black hover:scale-[1.01]'
-                            : 'bg-slate-900 text-slate-500 border border-indigo-950 cursor-not-allowed'
+                          ? 'bg-amber-500 text-slate-950 font-black cursor-default hover:scale-100'
+                          : 'bg-[#0038A8] hover:bg-indigo-700 text-white font-black hover:scale-[1.01]'
                       }`}
                     >
                       <Play className="w-4 h-4" />
