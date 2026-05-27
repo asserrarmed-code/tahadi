@@ -72,12 +72,12 @@ export default function ProjectorView({ onBackToMain }: ProjectorViewProps) {
 
   // Subjects coordinates mapping
   const islandStations = [
-    { name: 'التربية الإسلامية', icon: '🕌', title: 'قلعة الهدى', x: 23, y: 18 },
-    { name: 'اللغة العربية', icon: '📖', title: 'حصن الضاد', x: 50, y: 15 },
-    { name: 'الرياضيات', icon: '📐', title: 'جزيرة الأرقام', x: 77, y: 22 },
-    { name: 'النشاط العلمي', icon: '🔬', title: 'مختبر ابن الهيثم', x: 78, y: 62 },
-    { name: 'الاجتماعيات', icon: '🌍', title: 'منارة مكنونة', x: 50, y: 75 },
-    { name: 'اللغة الفرنسية', icon: '🇫🇷', title: 'برج الحكمة', x: 22, y: 58 },
+    { name: 'التربية الإسلامية', icon: '🕌', title: 'قلعة الإيمان', x: 23, y: 18 },
+    { name: 'اللغة العربية', icon: '📖', title: 'قلعة الضاد', x: 50, y: 15 },
+    { name: 'الرياضيات', icon: '📐', title: 'قلعة الخوارزمي', x: 77, y: 22 },
+    { name: 'النشاط العلمي', icon: '🔬', title: 'قلعة ابن سينا', x: 78, y: 62 },
+    { name: 'الاجتماعيات', icon: '🌍', title: 'قلعة ابن بطوطة', x: 50, y: 75 },
+    { name: 'اللغة الفرنسية', icon: '🇫🇷', title: 'قلعة Molière', x: 22, y: 58 },
   ];
 
   // Render Pin Connection Card

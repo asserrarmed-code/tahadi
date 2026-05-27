@@ -732,12 +732,12 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
               {/* 6 Castell Grid buttons */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {[
-                  { name: 'التربية الإسلامية', icon: '🕌', title: 'قلعة الهدى' },
-                  { name: 'اللغة العربية', icon: '📖', title: 'حصن الضاد' },
-                  { name: 'الرياضيات', icon: '📐', title: 'جزيرة الأرقام' },
-                  { name: 'النشاط العلمي', icon: '🔬', title: 'مختبر ابن الهيثم' },
-                  { name: 'الاجتماعيات', icon: '🌍', title: 'منارة التاريخ' },
-                  { name: 'اللغة الفرنسية', icon: '🇫🇷', title: 'برج الحكمة' }
+                  { name: 'التربية الإسلامية', icon: '🕌', title: 'قلعة الإيمان' },
+                  { name: 'اللغة العربية', icon: '📖', title: 'قلعة الضاد' },
+                  { name: 'الرياضيات', icon: '📐', title: 'قلعة الخوارزمي' },
+                  { name: 'النشاط العلمي', icon: '🔬', title: 'قلعة ابن سينا' },
+                  { name: 'الاجتماعيات', icon: '🌍', title: 'قلعة ابن بطوطة' },
+                  { name: 'اللغة الفرنسية', icon: '🇫🇷', title: 'قلعة Molière' }
                 ].map((station) => {
                   const isCompleted = currentRoom.completedSubjects?.[station.name] || false;
                   const isActive = currentRoom.activeSubject === station.name;
