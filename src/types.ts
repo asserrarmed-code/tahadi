@@ -55,6 +55,7 @@ export interface Room {
   players: Record<string, Player>;
   questionStartedAt: number | null; // Timestamp
   activeQuiz?: QuizSet;
+  currentQuestion?: Question | null;
   
   // Treasure Map State Sync
   activeSubject?: string | null;            // e.g., 'الرياضيات'

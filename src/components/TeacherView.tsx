@@ -597,34 +597,56 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
   // -------------------------------------------------------------------------------------------------
   // QUESTIONS BROADCAST AND REMOTE MANAGEMENT
   // -------------------------------------------------------------------------------------------------
+  const handleBroadcast = async (roomPIN: string, activeQuestion: Question) => {
+    try {
+      if (!roomPIN || !activeQuestion) {
+        console.error("Missing parameters in handleBroadcast: roomPIN or activeQuestion is undefined.");
+        return;
+      }
+
+      // Find original question index
+      const idx = poolQuestions.findIndex(q => q.id === activeQuestion.id);
+      if (idx === -1) {
+        console.error("The selected activeQuestion was not found in poolQuestions.");
+        return;
+      }
+
+      // Flush/Reset data values for all active players in room to clear UI buttons
+      const resetPlayers = { ...(currentRoom?.players || {}) };
+      for (const pid in resetPlayers) {
+        resetPlayers[pid] = {
+          ...resetPlayers[pid],
+          answeredThisRound: false,
+          answerIndex: null,
+          writtenAnswer: '',
+          isCorrect: false,
+          pointsGained: 0
+        };
+      }
+
+      // Direct write and update room fields on Firebase DB
+      await updateRoom(roomPIN, {
+        currentQuestionIndex: idx,
+        currentQuestionId: activeQuestion.id,
+        currentQuestion: activeQuestion, // Set the currentQuestion directly in rooms/${roomPIN}
+        state: 'question_countdown',
+        secondsRemaining: 4, // 3s countdown + 1s prep
+        revealAnswer: false,
+        players: resetPlayers
+      });
+
+      console.log(`🚀 Successfully broadcasted question id ${activeQuestion.id} to room ${roomPIN}`);
+    } catch (err) {
+      console.error("❌ Fatal Error in handleBroadcast:", err);
+      alert('حدث خطأ أثناء بث وتنشيط السؤال في Firebase. المرجو المحاولة مجدداً.');
+    }
+  };
+
   const handleBroadcastQuestion = async (idx: number) => {
     if (!currentRoom) return;
-
     const targetQuestion = poolQuestions[idx];
     if (!targetQuestion) return;
-
-    // Flush/Reset answered status for all players in currentRoom to refresh buttons on student screen
-    const resetPlayers = { ...currentRoom.players };
-    for (const pid in resetPlayers) {
-      resetPlayers[pid] = {
-        ...resetPlayers[pid],
-        answeredThisRound: false,
-        answerIndex: null,
-        writtenAnswer: '',
-        isCorrect: false,
-        pointsGained: 0
-      };
-    }
-
-    // Update Firebase Room State -> triggers live student page view state change immediately without reload
-    await updateRoom(currentRoom.pin, {
-      currentQuestionIndex: idx,
-      currentQuestionId: targetQuestion.id,
-      state: 'question_countdown',
-      secondsRemaining: 4, // 3s count + 1s introductory delay
-      revealAnswer: false,
-      players: resetPlayers
-    });
+    await handleBroadcast(currentRoom.pin, targetQuestion);
   };
 
   const handleSkipTimerAndReveal = async () => {
@@ -1251,16 +1273,15 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
                     </div>
 
                     <button
-                      onClick={() => handleBroadcastQuestion(qIndex)}
-                      disabled={isSentThisIndex}
+                      onClick={() => currentRoom && handleBroadcast(currentRoom.pin, q)}
                       className={`w-full md:w-auto px-5 py-3 rounded-xl font-bold text-xs shrink-0 cursor-pointer shadow transition-all flex items-center justify-center gap-1.5 ${
                         isSentThisIndex 
-                          ? 'bg-amber-500 text-slate-950 font-black cursor-default hover:scale-100'
+                          ? 'bg-amber-500 text-slate-950 font-black hover:bg-amber-400 hover:scale-[1.01]'
                           : 'bg-[#0038A8] hover:bg-indigo-700 text-white font-black hover:scale-[1.01]'
                       }`}
                     >
                       <Play className="w-4 h-4" />
-                      <span>{isSentThisIndex ? 'بث السؤال جارٍ... 🔥' : 'بث وتنشيط السؤال كلياً 🚀'}</span>
+                      <span>{isSentThisIndex ? 'بث السؤال جارٍ... (اضغط لإعادة الإرسال) 🔄🔥' : 'بث وتنشيط السؤال كلياً 🚀'}</span>
                     </button>
                   </div>
                 );

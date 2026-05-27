@@ -161,9 +161,9 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
   };
 
   // Extract variables
-  const activeQuestion = currentRoom && currentRoom.activeQuiz && currentRoom.currentQuestionIndex >= 0
+  const activeQuestion = currentRoom?.currentQuestion || (currentRoom && currentRoom.activeQuiz && currentRoom.currentQuestionIndex >= 0
     ? currentRoom.activeQuiz.questions[currentRoom.currentQuestionIndex]
-    : null;
+    : null);
 
   const currentPlayer = currentRoom && playerId ? currentRoom.players[playerId] : null;
 
@@ -318,7 +318,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
       )}
 
       {/* COUNTDOWN START */}
-      {currentRoom.state === 'question_countdown' && (
+      {currentRoom.state === 'question_countdown' && !currentRoom.currentQuestion && (
         <div className="bg-gradient-to-br from-indigo-950 to-slate-900 text-white rounded-3xl p-6 shadow-xl text-center py-12 space-y-4 border border-rose-500/20">
           <span className="text-3xl animate-pulse text-amber-300 block">استعد للتحدي القادم! 🔥</span>
           <p className="text-xs text-slate-400 font-bold">بوابة جزيرة {currentRoom.activeSubject || 'التحدي'} تفتح الآن...</p>
@@ -329,7 +329,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
       )}
 
       {/* ACTIVE RUNNING QUESTION INTERFACE */}
-      {currentRoom.state === 'question_active' && activeQuestion && (
+      {((currentRoom.state === 'question_active' || currentRoom.currentQuestion) && currentRoom.state !== 'question_result' && currentRoom.state !== 'leaderboard' && currentRoom.state !== 'finished') && activeQuestion && (
         <div className="space-y-4 animate-fade-in">
           
           {/* Header block with timers */}
