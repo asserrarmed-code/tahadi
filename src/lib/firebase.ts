@@ -83,7 +83,7 @@ export async function createRoom(pin: string, activeQuiz: QuizSet): Promise<Room
     const res = await fetch('/api/room/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quizSetId: activeQuiz.id, quizSet: activeQuiz })
+      body: JSON.stringify({ pin, quizSetId: activeQuiz.id, quizSet: activeQuiz })
     });
     const contentType = res.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
@@ -227,6 +227,9 @@ export async function updateRoom(pin: string, partial: Partial<Room>): Promise<v
     for (const pId in nextRoom.players) {
       nextRoom.players[pId].answeredThisRound = false;
       nextRoom.players[pId].answerIndex = null;
+      nextRoom.players[pId].writtenAnswer = '';
+      nextRoom.players[pId].isCorrect = false;
+      nextRoom.players[pId].pointsGained = 0;
     }
     saveRoomLocally(pin, nextRoom);
   } else if (partial.state === 'question_active') {
@@ -234,6 +237,13 @@ export async function updateRoom(pin: string, partial: Partial<Room>): Promise<v
     nextRoom.secondsRemaining = q?.timeLimit || 20;
     nextRoom.revealAnswer = false;
     nextRoom.questionStartedAt = Date.now();
+    for (const pId in nextRoom.players) {
+      nextRoom.players[pId].answeredThisRound = false;
+      nextRoom.players[pId].answerIndex = null;
+      nextRoom.players[pId].writtenAnswer = '';
+      nextRoom.players[pId].isCorrect = false;
+      nextRoom.players[pId].pointsGained = 0;
+    }
     saveRoomLocally(pin, nextRoom);
 
     // Setup client-side countdown timer ticking

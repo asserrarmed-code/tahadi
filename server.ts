@@ -177,8 +177,8 @@ app.post('/api/gemini/generate-hint', async (req, res) => {
 
 // Create Room (Professor starts a new Kahoot Session)
 app.post('/api/room/create', (req, res) => {
-  const { quizSetId, quizSet } = req.body;
-  const pin = generatePIN();
+  const { quizSetId, quizSet, pin: customPin } = req.body;
+  const pin = customPin ? String(customPin).trim() : generatePIN();
   
   // Store quiz set to database pool if custom created by AI
   if (quizSetId && quizSet) {
@@ -313,8 +313,17 @@ app.post('/api/room/:pin/start', (req, res) => {
     for (const pid in room.players) {
       room.players[pid].score = 0;
       room.players[pid].streak = 0;
-      room.players[pid].answeredThisRound = false;
     }
+  }
+
+  // Always reset round submission status when starting a countdown
+  for (const pid in room.players) {
+    room.players[pid].answeredThisRound = false;
+    room.players[pid].answerIndex = null;
+    room.players[pid].isCorrect = false;
+    room.players[pid].pointsGained = 0;
+    // @ts-ignore
+    room.players[pid].writtenAnswer = '';
   }
 
   room.currentQuestionIndex = targetIndex;

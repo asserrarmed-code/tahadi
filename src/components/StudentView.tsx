@@ -333,15 +333,15 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
         <div className="space-y-4 animate-fade-in">
           
           {/* Header block with timers */}
-          <div className="bg-slate-900/95 border border-indigo-700/30 rounded-3xl p-4 text-center space-y-2 relative shadow-lg">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 text-center space-y-3 relative shadow-2xl">
             {currentRoom.multiplierActive && (
-              <div className="absolute top-3 left-3 bg-red-500 text-white py-1 px-2.5 rounded-full text-[9px] font-black animate-pulse border border-red-400 flex items-center gap-1">
-                <Flame className="w-3 h-3" />
+              <div className="absolute top-3 left-3 bg-rose-600 text-white py-1 px-2.5 rounded-full text-[9px] font-black animate-pulse border border-rose-500 flex items-center gap-1">
+                <Flame className="w-3 h-3 text-yellow-300" />
                 <span>مضاعفة دبل: مخاطرة!</span>
               </div>
             )}
             
-            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 border-b border-slate-850 pb-2">
+            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 border-b border-slate-800/60 pb-2">
               <span>وزن المادة: {activeQuestion.points} نقطة</span>
               <span className="bg-slate-950 text-amber-400 px-2 py-0.5 rounded-md flex items-center gap-1 border border-amber-500/20">
                 <Clock className="w-3 h-3 text-amber-400 shrink-0" />
@@ -349,7 +349,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
               </span>
             </div>
             
-            <p className="font-extrabold text-sm text-yellow-105 text-amber-100 py-2 leading-relaxed">
+            <p className="font-extrabold text-base md:text-lg text-white md:bg-slate-950/40 p-3 md:p-4 rounded-2xl border border-transparent md:border-slate-800/40 leading-relaxed text-center whitespace-pre-wrap break-words">
               {activeQuestion.text}
             </p>
           </div>

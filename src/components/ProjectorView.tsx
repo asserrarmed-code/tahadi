@@ -462,10 +462,10 @@ export default function ProjectorView({ onBackToMain }: ProjectorViewProps) {
             )}
 
             <div className="space-y-4">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-205 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full inline-block">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-200 bg-slate-900 border border-slate-800 px-3 py-1 rounded-full inline-block">
                 مادة {currentRoom.activeSubject} • تحدي المحطة المغربية
               </span>
-              <h2 className="text-lg md:text-2xl font-black text-white leading-relaxed bg-slate-902 bg-slate-900 border border-slate-812 p-6 rounded-2xl">
+              <h2 className="text-xl md:text-3xl font-black text-amber-300 leading-relaxed bg-slate-900 border border-slate-800/80 p-6 md:p-8 rounded-2xl shadow-inner text-center whitespace-pre-wrap break-words">
                 {activeQuestion.text}
               </h2>
             </div>
