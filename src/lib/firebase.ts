@@ -288,7 +288,7 @@ export async function submitStudentAnswer(
 }
 
 // Student Consumes Powerup (Decrease on student side, alert teachers dashboard)
-export async function usePowerup(pin: string, playerId: string, powerupType: 'fiftyFifty' | 'extraTime' | 'hint'): Promise<void> {
+export async function usePowerup(pin: string, playerId: string, powerupType: 'philosopher' | 'shield' | 'timeQuake' | 'fiftyFifty' | 'extraTime' | 'hint'): Promise<void> {
   if (isConfigured && db) {
     try {
       const roomRef = doc(db, 'rooms', pin);
@@ -299,8 +299,34 @@ export async function usePowerup(pin: string, playerId: string, powerupType: 'fi
         if (player) {
           const updatedPlayer = { ...player };
           
-          if (powerupType === 'fiftyFifty') updatedPlayer.usedFiftyFifty = true;
-          if (powerupType === 'extraTime') {
+          if (powerupType === 'philosopher' || powerupType === 'hint' || powerupType === 'fiftyFifty') {
+            updatedPlayer.usedPhilosopher = true;
+            updatedPlayer.usedHint = true;
+            // Generate hint via Express API proxy securely even when Firebase is primary
+            const activeQuestion = room.activeQuiz?.questions[room.currentQuestionIndex];
+            let genHint = 'تلميح بيداغوجي: راجع أساسيات الدرس مع زملائك في المجموعة!';
+            if (activeQuestion) {
+              try {
+                const hintRes = await fetch('/api/gemini/generate-hint', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ questionText: activeQuestion.text, subject: activeQuestion.subject })
+                });
+                const hintData = await hintRes.json();
+                if (hintData.success) {
+                  genHint = hintData.hint;
+                }
+              } catch (err) {
+                console.error("Failed to fetch hint proxy:", err);
+              }
+            }
+            updatedPlayer.philosopherHint = genHint;
+          }
+          if (powerupType === 'shield') {
+            updatedPlayer.usedShield = true;
+          }
+          if (powerupType === 'timeQuake' || powerupType === 'extraTime') {
+            updatedPlayer.usedTimeQuake = true;
             updatedPlayer.usedExtraTime = true;
             // Add extra seconds to countdown
             await updateDoc(roomRef, {
@@ -309,7 +335,6 @@ export async function usePowerup(pin: string, playerId: string, powerupType: 'fi
             } as any);
             return;
           }
-          if (powerupType === 'hint') updatedPlayer.usedHint = true;
 
           await updateDoc(roomRef, {
             [`players.${playerId}`]: updatedPlayer

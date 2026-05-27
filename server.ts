@@ -150,6 +150,31 @@ ${pedagogicalEnforcement}
   }
 });
 
+// REST API for high-quality pedagogical Hint generation using Gemini
+app.post('/api/gemini/generate-hint', async (req, res) => {
+  const { questionText, subject } = req.body;
+  try {
+    const ai = getAiClient();
+    const prompt = `أنت "فيلسوف الصف" الحكيم والمساعد للأطفال في المغرب.
+قدم تلميحاً بيداغوجياً ذكياً، قصيراً جداً ومبسّطاً (لا يتجاوز 12 كلمة)، ومشجعاً لمساعدة التلاميذ على حل هذا السؤال: "${questionText}" في مادة ${subject || 'عام'}.
+تجنب إعطاء الجواب الصريح مباشرة، بل قدم دلالة لطيفة أو توجيها ذكيا بأسلوب مغربي يثير الفضول والانتباه للتعلم.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: 'أنت فيلسوف بيداغوجي مبهج وسريع البديهة تعطي تسريبات وتلميحات غير مباشرة للأطفال بالقسم المغربي.',
+      }
+    });
+
+    const hint = response.text?.trim() || 'فكر بذكاء وتركيز، الإجابة قريبة جداً!';
+    res.json({ success: true, hint });
+  } catch (error: any) {
+    console.error('Error generating hint:', error);
+    res.json({ success: true, hint: 'تلميح بيداغوجي: استعن بأساسيات الدرس وعناصر المفهوم الرئيسية!' });
+  }
+});
+
 // Create Room (Professor starts a new Kahoot Session)
 app.post('/api/room/create', (req, res) => {
   const { quizSetId, quizSet } = req.body;
@@ -169,7 +194,11 @@ app.post('/api/room/create', (req, res) => {
     revealAnswer: false,
     activeQuizId: quizSetId || null,
     players: {},
-    questionStartedAt: null
+    questionStartedAt: null,
+    // Treasure Island extensions
+    activeSubject: null,
+    completedSubjects: {},
+    multiplierActive: false
   };
 
   rooms_db[pin] = newRoom;
@@ -205,7 +234,11 @@ app.post('/api/room/join', (req, res) => {
     pointsGained: 0,
     answerIndex: null,
     timeTaken: 0,
-    streak: 0
+    streak: 0,
+    usedPhilosopher: false,
+    usedShield: false,
+    usedTimeQuake: false,
+    philosopherHint: ""
   };
 
   room.players[playerId] = newPlayer;
@@ -358,13 +391,27 @@ app.post('/api/room/:pin/answer', (req, res) => {
     }
   }
 
+  // Senior Gamification scoring mechanics:
+  if (correct) {
+    if (room.multiplierActive) {
+      pointsGained = pointsGained * 2;
+    }
+  } else {
+    // 300 points penalty unless protected by Shield
+    if (player.usedShield) {
+      pointsGained = 0; // Shield breaks but prevents loss!
+    } else {
+      pointsGained = -300;
+    }
+  }
+
   player.answeredThisRound = true;
   player.answerIndex = answerIndex !== undefined ? Number(answerIndex) : null;
   // @ts-ignore
   player.writtenAnswer = writtenAnswer || '';
   player.isCorrect = correct;
   player.pointsGained = pointsGained;
-  player.score += pointsGained;
+  player.score = Math.max(0, player.score + pointsGained);
   player.timeTaken = timeTaken;
   if (correct) {
     player.streak += 1;
@@ -414,7 +461,7 @@ app.post('/api/room/:pin/adjust-points', (req, res) => {
 });
 
 // Student active Powerup Use
-app.post('/api/room/:pin/powerup', (req, res) => {
+app.post('/api/room/:pin/powerup', async (req, res) => {
   const { pin } = req.params;
   const { playerId, powerupType } = req.body;
   const room = rooms_db[String(pin).trim()];
@@ -422,16 +469,38 @@ app.post('/api/room/:pin/powerup', (req, res) => {
 
   const player = room.players[playerId];
   if (player) {
-    if (powerupType === 'fiftyFifty') {
-      // @ts-ignore
-      player.usedFiftyFifty = true;
-    } else if (powerupType === 'extraTime') {
-      // @ts-ignore
+    if (powerupType === 'philosopher' || powerupType === 'hint' || powerupType === 'fiftyFifty') {
+      player.usedPhilosopher = true;
+      player.usedHint = true;
+      try {
+        const quiz = custom_quizzes_pool[room.activeQuizId || ''];
+        const q = quiz?.questions[room.currentQuestionIndex];
+        if (q) {
+          const ai = getAiClient();
+          const prompt = `أنت فيلسوف الصف الحكيم والذكي لمساعدة تلميذ مغربي يواجه تحدياً.
+قدم تلميحاً بيداغوجياً ذكياً وقصيراً جداً (لا يتجاوز 12 كلمة)، لمساعدته على حل السؤال: "${q.text}" في مادة ${q.subject || 'عام'}.
+لا تعطه الجواب الصريح أبداً، بل وجِّهه للحل بدلالة لطيفة.`;
+          const response = await ai.models.generateContent({
+            model: 'gemini-3.5-flash',
+            contents: prompt,
+            config: {
+              systemInstruction: 'أنت فيلسوف الصف المغربي المبهج تيسر الفهم وتعطي تلميحات ذكية ومحفزة للأطفال بالقسم.',
+            }
+          });
+          player.philosopherHint = response.text?.trim() || 'فكر بذكاء، الجواب أمامك!';
+        } else {
+          player.philosopherHint = 'ركّز مع زملائك، الجواب قريب جداً!';
+        }
+      } catch (e) {
+        console.error("Gemini failed in powerup: ", e);
+        player.philosopherHint = 'تلميح بيداغوجي: استعن بأساسيات الدرس وعناصر المفهوم الرئيسية!';
+      }
+    } else if (powerupType === 'shield' || powerupType === 'usedShield') {
+      player.usedShield = true;
+    } else if (powerupType === 'timeQuake' || powerupType === 'extraTime') {
+      player.usedTimeQuake = true;
       player.usedExtraTime = true;
       room.secondsRemaining = (room.secondsRemaining || 0) + 15;
-    } else if (powerupType === 'hint') {
-      // @ts-ignore
-      player.usedHint = true;
     }
     console.log(`Player [${player.name}] triggered powerup: ${powerupType}`);
   }

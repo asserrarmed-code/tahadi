@@ -23,6 +23,12 @@ export interface Player {
   usedFiftyFifty?: boolean;
   usedExtraTime?: boolean;
   usedHint?: boolean;
+  
+  // Magical Powerups states (1 usage each)
+  usedPhilosopher?: boolean; // Philosopher hint (التلميح)
+  usedShield?: boolean;      // Protection Shield (الدرع)
+  usedTimeQuake?: boolean;   // Time Earthquake (+15s)
+  philosopherHint?: string;  // Stores the smart hint generated from Gemini
 }
 
 export interface Question {
@@ -49,6 +55,11 @@ export interface Room {
   players: Record<string, Player>;
   questionStartedAt: number | null; // Timestamp
   activeQuiz?: QuizSet;
+  
+  // Treasure Map State Sync
+  activeSubject?: string | null;            // e.g., 'الرياضيات'
+  completedSubjects?: Record<string, boolean>; // e.g., {'الرياضيات': true}
+  multiplierActive?: boolean;                 // Teacher toggles multiplier control
 }
 
 export interface QuizSet {
