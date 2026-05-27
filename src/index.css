@@ -11,6 +11,33 @@
   font-family: 'Cairo', 'Tajawal', sans-serif !important;
 }
 
+/* 🇲🇦 Traditional Moroccan Architecture Zellij Classes */
+.bg-moroccan-zellij-dark {
+  background-color: #070e1c; /* Deep Imperial indigo night */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23115e59' fill-opacity='0.22'%3E%3Cpath d='M40 0l7 21 21 7-21 7-7 21-7-21-21-7 21-7zM0 0l3 10 10 3-10 3-3 10-3-10-10-3 10-3zM80 0l-3 10-10 3 10 3 3 10 3-10 10-3-10-3zM0 80l3-10 10-3-10-3-3-10-3 10-10 3 10 3zM80 80l-3-10-10-3 10-3 3-10 3 10 10 3-10 3z'/%3E%3Cg fill='%23b45309' fill-opacity='0.16'%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Ccircle cx='0' cy='0' r='3'/%3E%3Ccircle cx='80' cy='0' r='3'/%3E%3Ccircle cx='0' cy='80' r='3'/%3E%3Ccircle cx='80' cy='80' r='3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+.bg-moroccan-zellij-light {
+  background-color: #fcfdfd; /* Clean Alabaster White */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%230f766e' fill-opacity='0.05'%3E%3Cpath d='M40 0l7 21 21 7-21 7-7 21-7-21-21-7 21-7z'/%3E%3C/g%3E%3Cg fill='%23d97706' fill-opacity='0.04'%3E%3Ccircle cx='40' cy='40' r='4'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.bg-moroccan-marrakesh {
+  background-color: #581c1c; /* Terracotta Red / Warm Clay Marrakech background */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23991b1b' fill-opacity='0.3'%3E%3Cpath d='M30 0l5 15 15 5-15 5-5 15-5-15-15-5 15-5z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Premium Moroccan Arch Border Accent */
+.border-moroccan-gold {
+  border: 2px solid rgba(217, 119, 6, 0.45);
+  box-shadow: 0 0 15px rgba(217, 119, 6, 0.12);
+}
+
+.border-moroccan-emerald {
+  border: 2px solid rgba(13, 148, 136, 0.45);
+  box-shadow: 0 0 15px rgba(13, 148, 136, 0.12);
+}
+
 /* Custom gorgeous animations for child-friendly quiz */
 @keyframes bounce-slow {
   0%, 100% {

@@ -238,6 +238,99 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     setShowAiDrawer(false);
   };
 
+  // Helper utility to produce a high-fidelity mock question matching the Moroccan curriculum on client-side if server is unreachable
+  const getLocalPedagogicalQuestion = (subject: string, level: string) => {
+    const mainSubject = (subject || '').trim();
+    
+    if (mainSubject.includes('إسلامية') || mainSubject.includes('اسلامية') || mainSubject.includes('التربية')) {
+      return {
+        text: `ما هي "فرائض الوضوء" المعتمدة في مذهب إمامنا مالك بالمملكة المغربية؟`,
+        options: [
+          'سبعة: النية، غسل الوجه، غسل اليدين، مسح الرأس، غسل الرجلين، الدلك، الموالاة',
+          'خمسة: التسمية، المضمضة، الاستنشاق، مسح الأذنين، غسل الكوعين',
+          'أربعة فقط: غسل الوجه واليدين ومسح بعض الرأس ورجلين',
+          'تسعة: التثليث والبسملة وتخليل الشعر والسواك'
+        ],
+        correctIndex: 0,
+        points: 1000,
+        timeLimit: 20
+      };
+    }
+    
+    if (mainSubject.includes('عربية') || mainSubject.includes('عربي') || mainSubject.includes('اللغة')) {
+      return {
+        text: `في الدرس اللغوي بمقرر المستوى السادس، ما هو الإعراب الصحيح في جملة: "حفظ سليمان القرآن طاعةً للهِ"؟`,
+        options: [
+          'القرآن: مفعول به منصوب، طاعةً: مفعول لأجله منصوب يبيّن سبب الفعل',
+          'القرآن: فاعل مؤخر، طاعةً: مفعول مطلق منصوب للتوكيد',
+          'القرآن: تمييز منصوب، طاعةً: حال مفردة منصوبة بالفتحة',
+          'القرآن: مفعول فيه ظرف مكان، طاعةً: صفة مجرورة'
+        ],
+        correctIndex: 0,
+        points: 1100,
+        timeLimit: 20
+      };
+    }
+
+    if (mainSubject.includes('رياضيات') || mainSubject.includes('رياض') || mainSubject.includes('الأرقام')) {
+      return {
+        text: `يريد الأستاذ يوسف حساب مساحة فناء المدرسة المخصص للراحة بمراكش على شكل مستطيل طوله 25 متراً وعرضه 12 متراً. فما هي مساحته بدقة؟`,
+        options: [
+          '300 متر مربع (بحساب الطول × العرض)',
+          '150 متر مربع (بحساب الطول + العرض ضرب 2)',
+          '74 متر مربع (محيط المستطيل الشامل)',
+          '37 متر مربع (نصف المساحة الكلية)'
+        ],
+        correctIndex: 0,
+        points: 1200,
+        timeLimit: 25
+      };
+    }
+
+    if (mainSubject.includes('علمي') || mainSubject.includes('ابن الهيثم') || mainSubject.includes('النشاط')) {
+      return {
+        text: `ما هو غاز الغلاف الجوي الرئيسي الذي يمثل النسبة الأكبر (78%) ويدعم توازن الهواء في درس التغيرات والبيئة؟`,
+        options: [
+          'غاز النيتروجين (الآزوت)',
+          'غاز الأوكسجين الوفير',
+          'غاز ثنائي أوكسيد الكربون',
+          'غاز الأوزون أو الميثان'
+        ],
+        correctIndex: 0,
+        points: 1000,
+        timeLimit: 20
+      };
+    }
+
+    if (mainSubject.includes('اجتماعيات') || mainSubject.includes('تاريخ') || mainSubject.includes('جغرافيا')) {
+      return {
+        text: `من بني الصومعة التاريخية للكتبية الشهيرة في مراكش وصومعة حسان بالرباط؟`,
+        options: [
+          'دولة الموحدين العريقة',
+          'دولة الأدارسة الأولى',
+          'دولة المرابطين مؤسسي المدينة',
+          'الدولة الميرينية المتميزة بالمعمار'
+        ],
+        correctIndex: 0,
+        points: 1200,
+        timeLimit: 20
+      };
+    }
+
+    return {
+      text: `قيمة بيداغوجية وتربوية تفاعلية للدرس الراهن: ما هي القاعدة المثمرة للعمل الجماعي بالقسم؟`,
+      options: [
+        'التعاون الفعّال، تدوين المخرجات، ومساعدة الرفيق بروح طيبة',
+        'الانعزال واستعجال التخمين العشوائي دائماً',
+        'تركيز كامل المسؤولية التعليمية على المدرس فقط',
+        'التنافس السلبي للفوز دون تفاهم مع الرفاق'
+      ],
+      correctIndex: 0,
+      points: 1000,
+      timeLimit: 15
+    };
+  };
+
   // Launch Gemini specific subject question
   const handleLaunchSubjectStation = async (subjectName: string) => {
     if (!currentRoom) return;
@@ -247,9 +340,12 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     }
 
     setGeneratingForSubject(subjectName);
+    
+    let rawQ: any = null;
+    let isOfflineMode = false;
+    const currentLevel = currentRoom.activeQuiz?.level || 'المستوى السادس';
+
     try {
-      const currentLevel = currentRoom.activeQuiz?.level || 'المستوى السادس';
-      
       const response = await fetch('/api/gemini/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -261,12 +357,28 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         })
       });
 
-      const data = await response.json();
-      if (!data.success || !Array.isArray(data.questions) || data.questions.length === 0) {
-        throw new Error(data.error || 'فشل في نيل السؤال من خادم Gemini AI.');
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
+          rawQ = data.questions[0];
+        } else {
+          throw new Error(data.error || 'استجابة محتوى غير صالحة من المعلم الذكي.');
+        }
+      } else {
+        throw new Error('لم يتمكن نظام الصف من الاتصال بالخادم بشكل مباشر أو مغلف.');
+      }
+    } catch (err: any) {
+      console.warn("Express AI generator offline or failed on current domain. Triggering local Moroccan pedagogical generator...", err);
+      rawQ = getLocalPedagogicalQuestion(subjectName, currentLevel);
+      isOfflineMode = true;
+    }
+
+    try {
+      if (!rawQ) {
+        throw new Error('عذراً، تعذر صياغة السؤال التعليمي للمحطة.');
       }
 
-      const rawQ = data.questions[0];
       const newQuestionId = `q-station-gen-${Date.now()}`;
       
       const newQuestion: Question = {
@@ -335,7 +447,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
 
     } catch (err: any) {
       console.error(err);
-      alert(`عذراً، فشل استحضار الذكاء الاصطناعي: ${err?.message || 'تأكد من إعداد مفتاح API الخاص بـ Gemini.'}`);
+      alert(`عذراً، فشلت صياغة محطة التحدي الذهبية: ${err?.message || 'الرجاء التحقق من المدخلات.'}`);
     } finally {
       setGeneratingForSubject(null);
     }
