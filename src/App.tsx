@@ -72,6 +72,8 @@ export default function App() {
         <WelcomeView 
           onJoinStudent={handleJoinStudentFromWelcome} 
           onNavigateToTeacher={() => navigateTo('teacher')}
+          onNavigateToProjector={() => navigateTo('projector')}
+          onNavigateToStudent={() => navigateTo('student')}
           error={errorHeader}
         />
       )}

@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
-import { Laptop, GraduationCap, ArrowRight, Sparkles, Users, Key } from 'lucide-react';
+import { 
+  Laptop, GraduationCap, ArrowRight, Sparkles, Users, Key, 
+  Tv, Zap, HelpCircle, Play, Shield, Brain, Timer, Award, Info
+} from 'lucide-react';
 import { MOROCCAN_AVATARS } from '../data';
 
 interface WelcomeViewProps {
   onJoinStudent: (name: string, avatar: string, pin: string) => Promise<void>;
   onNavigateToTeacher: () => void;
+  onNavigateToProjector: () => void;
+  onNavigateToStudent: () => void;
   error?: string | null;
 }
 
-export default function WelcomeView({ onJoinStudent, onNavigateToTeacher, error }: WelcomeViewProps) {
+export default function WelcomeView({ 
+  onJoinStudent, 
+  onNavigateToTeacher, 
+  onNavigateToProjector, 
+  onNavigateToStudent, 
+  error 
+}: WelcomeViewProps) {
   const [pinInput, setPinInput] = useState('');
   const [studentName, setStudentName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState('🦁');
@@ -170,7 +181,7 @@ export default function WelcomeView({ onJoinStudent, onNavigateToTeacher, error 
 
           <button
             onClick={onNavigateToTeacher}
-            className="w-full p-4 rounded-2xl bg-emerald-550 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm transition-all shadow-md hover:shadow-emerald-950/20 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full p-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-black text-sm transition-all shadow-md hover:shadow-emerald-950/20 flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>الدخول إلى لوحة الأستاذ المشرف</span>
             <Laptop className="w-4 h-4 text-emerald-200" />
@@ -178,6 +189,119 @@ export default function WelcomeView({ onJoinStudent, onNavigateToTeacher, error 
         </div>
 
       </div>
+
+      {/* QUICK SIMULATION & TESTING WORKSPACE */}
+      <section id="simulator-workspace" className="mt-12 bg-indigo-950 text-white rounded-3xl p-6 md:p-8 shadow-2xl border border-indigo-500/25 space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-indigo-900 pb-4">
+          <div className="space-y-1">
+            <span className="text-[10px] bg-indigo-500/30 text-indigo-200 border border-indigo-500/30 px-3 py-1 rounded-full font-black uppercase">
+              لوحة المحاكاة التفاعلية والاختبار السريع 🧪⚙️
+            </span>
+            <h3 className="text-xl font-black text-amber-300">كيف تجري مسابقة جزيرة الكنز المغربية؟</h3>
+          </div>
+          <p className="text-xs text-slate-300 max-w-sm leading-relaxed font-bold">
+            يمكنك محاكاة دورة اللعبة كاملة بمفردك عن طريق فتح الشاشات الثلاث في متصفحك سوياً ومراقبة التزامن الفوري وقدرة الـ AI الغنية!
+          </p>
+        </div>
+
+        {/* 4 Step visual process */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[
+            { step: '1', title: 'تأسيس المعلم للحصة', desc: 'ادخل كمدرس (رمز 2026)، واختر مستوى السادس المغربي ثم انقر إطلاق الغرفة للحصول على الـ PIN اللاسلكي.' },
+            { step: '2', title: 'عرض خريطة كنز قمتنا', desc: 'افتح شاشة العرض المسلاط وضع رقم الـ PIN. ستظهر خريطة تفاعلية متحركة توضح المجموعات وسلسلة الذهب.' },
+            { step: '3', title: 'دخول مجموعات الحلفاء', desc: 'افتح واجهة الطالب، اكتب رمز PIN ولقب فريقكم، لتنضم المركبة اللاسلكية فورا لمرفأ الانطلاق ويتم رصدهم بالخارطة.' },
+            { step: '4', title: 'بث قلاع المعرفة بالـ AI', desc: 'اضغط على قلعة معينة بلوحة المدرس (مثلا الرياضيات). يستدعي الخادم Gemini AI على الفور لتفجير سؤال حي بالتحدي!' }
+          ].map((item, idx) => (
+            <div key={idx} className="bg-slate-900/60 border border-indigo-900/40 p-4 rounded-2xl relative space-y-2">
+              <span className="absolute top-3 left-3 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-mono font-black text-xs">
+                {item.step}
+              </span>
+              <p className="font-extrabold text-xs text-amber-200 pt-1">{item.title}</p>
+              <p className="text-[11px] text-slate-350 leading-relaxed font-medium">{item.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* 1-Click Fast Switch Buttons to satisfy "What is next" */}
+        <div className="bg-slate-950 p-4 rounded-2xl border border-indigo-900/50 space-y-4">
+          <p className="text-xs font-black text-slate-300 text-center">👇 انقر على الأزرار لفتح واختبار الأدوار المختلفة للحصة في متصفحك الراهن:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            
+            {/* Run Teacher portal */}
+            <button
+              onClick={onNavigateToTeacher}
+              className="p-3.5 rounded-xl bg-slate-900 border border-emerald-500/30 hover:border-emerald-400 text-emerald-400 font-extrabold text-xs flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer shadow-md"
+            >
+              <Laptop className="w-4.5 h-4.5" />
+              <span>لوحة الأستاذ الميسر [رمز: 2026] 💻</span>
+            </button>
+
+            {/* Run Projector Big Map screen */}
+            <button
+              onClick={onNavigateToProjector}
+              className="p-3.5 rounded-xl bg-slate-900 border border-amber-500/30 hover:border-amber-400 text-amber-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer shadow-md"
+            >
+              <Tv className="w-4.5 h-4.5" />
+              <span>الشاشة الكبرى (البروجيكتور) 🎥🗺️</span>
+            </button>
+
+            {/* Run Student simulated screen */}
+            <button
+              onClick={onNavigateToStudent}
+              className="p-3.5 rounded-xl bg-slate-900 border border-indigo-500/30 hover:border-indigo-400 text-indigo-300 font-extrabold text-xs flex items-center justify-center gap-2 transition-transform active:scale-95 cursor-pointer shadow-md"
+            >
+              <GraduationCap className="w-4.5 h-4.5" />
+              <span>واجهة هاتف التلميذ / المجموعة 🎒📱</span>
+            </button>
+
+          </div>
+        </div>
+
+        {/* Bento description of Points, Stages, Helpers */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Rules: Stages & Castles */}
+          <div className="bg-slate-900/40 border border-indigo-900/30 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 border-b border-indigo-900 pb-2">
+              <Award className="w-5 h-5 text-amber-450 text-amber-400" />
+              <h4 className="text-xs font-black text-amber-205">قلاع المعرفة والعلوم الست 🕌📖</h4>
+            </div>
+            <ul className="space-y-2 text-[11px] text-slate-350 leading-relaxed font-semibold">
+              <li>• <span className="text-white font-extrabold">🕌 قلعة الهدى (الإسلامية):</span> فقه المواريث، الفرائض والعبادات السليمة.</li>
+              <li>• <span className="text-white font-extrabold">📖 حصن الضاد (اللغة العربية):</span> النحو الصرفي، الاستثناء، التوكيد والتمييز.</li>
+              <li>• <span className="text-white font-extrabold">📐 جزيرة الأرقام (الرياضيات):</span> الحجوم الهندسية، الأعداد العشرية الكسرية.</li>
+              <li>• <span className="text-white font-extrabold">🔬 مختبر الهيثم (النشاط العلمي):</span> الفلك الكوني وظواهر الطبيعة الكيميائية.</li>
+            </ul>
+          </div>
+
+          {/* Rules: Gold & Risk Multiplier */}
+          <div className="bg-slate-900/40 border border-indigo-900/30 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 border-b border-indigo-900 pb-2">
+              <Zap className="w-5 h-5 text-red-400 animate-pulse" />
+              <h4 className="text-xs font-black text-amber-205">احتساب النقاط ومضاعف المخاطرة 🪙🔥</h4>
+            </div>
+            <ul className="space-y-2 text-[11px] text-slate-350 leading-relaxed font-semibold">
+              <li>• <span className="text-white font-extrabold">الجزاء الذهبي:</span> كل قلعة تقدم 1000 ذهبية للتحدي، ترتفع بنقاء وسرعة توقيت الاستجابة.</li>
+              <li>• <span className="text-white font-extrabold">عقوبة الخطأ:</span> تخسر المجموعة -300 ذهبية في المحاولة الفاشلة (عقوبة التخمين العشوائي).</li>
+              <li>• <span className="text-white font-extrabold">وضع المخاطرة (Double Risk):</span> يفعله المعلم ليضاعف نقاط كنز القلعة لـ 2x (+2000)، لكن الخطأ فيه يعني الخصم الأكيد.</li>
+            </ul>
+          </div>
+
+          {/* Rules: Magic Powerups */}
+          <div className="bg-slate-900/40 border border-indigo-900/30 p-5 rounded-2xl space-y-3">
+            <div className="flex items-center gap-2 border-b border-indigo-900 pb-2">
+              <Sparkles className="w-5 h-5 text-teal-400" />
+              <h4 className="text-xs font-black text-amber-205">بطاقات المعينات والمساعدات السحرية 🔮🛡️</h4>
+            </div>
+            <ul className="space-y-2 text-[11px] text-slate-350 leading-relaxed font-semibold">
+              <li>• <span className="text-white font-extrabold">🔮 بطاقة الفيلسوف:</span> تسأل Gemini AI فيعطيك تلميحاً ذكياً عميقاً يقرّب المجموعة للجواب الصحيح.</li>
+              <li>• <span className="text-white font-extrabold">🛡️ درع الأطلس الشامخ:</span> يحصن المجموعة ويحمي رصيدها من خسارة الذهب تماماً في هذه الجولة إن أخطأت.</li>
+              <li>• <span className="text-white font-extrabold">🌋 زلزال وقت القلعة:</span> يتسبب في هزة تهز شريط الوقت وتضيف 15 ثانية للكل للتواجد والتفكير!</li>
+            </ul>
+          </div>
+
+        </div>
+      </section>
 
       <div className="mt-12 text-center text-[10px] text-slate-400 font-bold">
         <span>تطبيق مسابقات القسم المغربية 🌟 متزامن لحظياً بلا انتظار</span>
