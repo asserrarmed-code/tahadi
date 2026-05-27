@@ -38,6 +38,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
 
   // Active Live Session details
   const [currentRoom, setCurrentRoom] = useState<Room | null>(null);
+  const [teamsResponses, setTeamsResponses] = useState<Record<string, { teamName: string; selectedAnswer: any; isCorrect: boolean; timestamp: number }>>({});
   const [loadingRoom, setLoadingRoom] = useState(false);
   const [activePin, setActivePin] = useState<string | null>(() => localStorage.getItem('school_teacher_active_room_pin'));
 
@@ -78,16 +79,23 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
           if (room.activeQuiz && room.activeQuiz.questions) {
             setPoolQuestions(room.activeQuiz.questions);
           }
+          if (room.responses) {
+            setTeamsResponses(room.responses);
+          } else {
+            setTeamsResponses({});
+          }
         } else {
           localStorage.removeItem('school_teacher_active_room_pin');
           setActivePin(null);
           setGameState('setup');
+          setTeamsResponses({});
         }
         setLoadingRoom(false);
       });
       return () => unsubscribe();
     } else {
       setCurrentRoom(null);
+      setTeamsResponses({});
     }
   }, [activePin]);
 
@@ -703,7 +711,22 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
 
   const handleManualAdjustPoints = async (pid: string, amount: number) => {
     if (!currentRoom) return;
-    await adjustPlayerScore(currentRoom.pin, pid, amount);
+    try {
+      // Direct optimistic state update for snappy UI feedback
+      const updatedPlayers = { ...currentRoom.players };
+      if (updatedPlayers[pid]) {
+        updatedPlayers[pid].score = Math.max(0, updatedPlayers[pid].score + amount);
+        setCurrentRoom({
+          ...currentRoom,
+          players: updatedPlayers
+        });
+      }
+      
+      await adjustPlayerScore(currentRoom.pin, pid, amount);
+      console.log(`Successfully adjusted score for playerId: ${pid} with amount: ${amount}`);
+    } catch (err) {
+      console.error("❌ Failed of manual score adjustment in teacher portal:", err);
+    }
   };
 
   // Helper values for displaying telemetry
@@ -1125,47 +1148,70 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
               </div>
             ) : (
               <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
-                {playersList.map((p) => (
-                  <div key={p.id} className="bg-slate-900/80 border border-indigo-950 p-3 rounded-2xl flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-2xl shrink-0">{p.avatar || '⛵'}</span>
-                      <div className="min-w-0 text-right">
-                        <p className="text-xs font-black text-slate-100 truncate">{p.name}</p>
-                        <p className="text-[10px] text-amber-400 font-bold mt-0.5 flex items-center gap-1.5">
-                          <span>{p.score} ذهبية</span>
-                          {p.streak > 0 && (
-                            <span className="bg-red-950/40 text-rose-400 px-1.5 py-0.5 rounded text-[8.5px] font-black flex items-center gap-0.5 border border-rose-900/30">
-                              <Flame className="w-2.5 h-2.5 text-rose-400" />
-                              {p.streak} متتالي
-                            </span>
-                          )}
-                        </p>
+                {playersList.map((p) => {
+                  const resp = teamsResponses[p.id];
+                  return (
+                    <div key={p.id} className="bg-slate-900/80 border border-indigo-950 p-3 rounded-2xl flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-2xl shrink-0">{p.avatar || '⛵'}</span>
+                          <div className="min-w-0 text-right">
+                            <p className="text-xs font-black text-slate-100 truncate">{p.name}</p>
+                            <p className="text-[10px] text-amber-400 font-bold mt-0.5 flex items-center gap-1.5">
+                              <span>{p.score} ذهبية</span>
+                              {p.streak > 0 && (
+                                <span className="bg-red-950/40 text-rose-400 px-1.5 py-0.5 rounded text-[8.5px] font-black flex items-center gap-0.5 border border-rose-900/30">
+                                  <Flame className="w-2.5 h-2.5 text-rose-400" />
+                                  {p.streak} متتالي
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* GRADING FEEDBACK BUTTONS FOR THE EDUCATOR */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => handleManualAdjustPoints(p.id, 200)}
+                            className="p-1 px-1.5 text-xs text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/50 rounded-lg border border-emerald-900/30 transition-all cursor-pointer flex items-center gap-0.5"
+                            title="منح 200 ذهبية لمجهود متميز"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>200+</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleManualAdjustPoints(p.id, -200)}
+                            className="p-1 px-1.5 text-xs text-rose-400 bg-rose-950/20 hover:bg-rose-950/50 rounded-lg border border-rose-900/30 transition-all cursor-pointer flex items-center gap-0.5"
+                            title="خصم 200 ذهبية"
+                          >
+                            <MinusCircle className="w-3.5 h-3.5" />
+                            <span>200-</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* GRADING FEEDBACK BUTTONS FOR THE EDUCATOR */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleManualAdjustPoints(p.id, 200)}
-                        className="p-1 px-1.5 text-xs text-emerald-400 bg-emerald-950/20 hover:bg-emerald-950/50 rounded-lg border border-emerald-900/30 transition-all flex items-center gap-0.5"
-                        title="منح 200 ذهبية لمجهود متميز"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>200+</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => handleManualAdjustPoints(p.id, -200)}
-                        className="p-1 px-1.5 text-xs text-rose-400 bg-rose-950/20 hover:bg-rose-950/50 rounded-lg border border-rose-900/30 transition-all flex items-center gap-0.5"
-                        title="خصم 200 ذهبية"
-                      >
-                        <MinusCircle className="w-3.5 h-3.5" />
-                        <span>200-</span>
-                      </button>
+                      {/* Live Teams Answer / Feedback tracker */}
+                      {resp && (
+                        <div className="text-[10px] bg-slate-950 border border-indigo-900/30 text-slate-300 font-medium px-2.5 py-1.5 rounded-xl block text-right mt-1">
+                          <span className="text-amber-400 font-extrabold">الجواب المختار: </span>
+                          <span className="text-slate-100 font-bold pb-1 block">
+                            {typeof resp.selectedAnswer === 'number'
+                              ? `الخيار رَقْم ${resp.selectedAnswer + 1} (${activeQuestion?.options[resp.selectedAnswer] || ''})`
+                              : `"${resp.selectedAnswer}"`}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            {resp.isCorrect ? (
+                              <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-900/30 px-1.5 py-0.5 rounded font-black text-[9px]">✔️ صحيحة</span>
+                            ) : (
+                              <span className="bg-rose-950/50 text-rose-400 border border-rose-900/30 px-1.5 py-0.5 rounded font-black text-[9px]">❌ خاطئة</span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                     </div>
-
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

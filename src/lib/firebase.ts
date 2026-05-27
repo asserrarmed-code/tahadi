@@ -190,6 +190,10 @@ export function listenToRoom(pin: string, onUpdate: (room: Room | null) => void)
 
 // Update Room State dynamically
 export async function updateRoom(pin: string, partial: Partial<Room>): Promise<void> {
+  if (partial.state === 'question_countdown' || partial.state === 'question_active') {
+    partial.responses = {};
+  }
+
   if (isConfigured && db) {
     try {
       const roomRef = doc(db, 'rooms', pin);
@@ -224,6 +228,7 @@ export async function updateRoom(pin: string, partial: Partial<Room>): Promise<v
     }
     nextRoom.secondsRemaining = 4;
     nextRoom.revealAnswer = false;
+    nextRoom.responses = {};
     for (const pId in nextRoom.players) {
       nextRoom.players[pId].answeredThisRound = false;
       nextRoom.players[pId].answerIndex = null;
@@ -237,6 +242,7 @@ export async function updateRoom(pin: string, partial: Partial<Room>): Promise<v
     nextRoom.secondsRemaining = q?.timeLimit || 20;
     nextRoom.revealAnswer = false;
     nextRoom.questionStartedAt = Date.now();
+    nextRoom.responses = {};
     for (const pId in nextRoom.players) {
       nextRoom.players[pId].answeredThisRound = false;
       nextRoom.players[pId].answerIndex = null;
@@ -451,7 +457,27 @@ export async function submitStudentAnswer(
           };
 
           const updatedPlayers = { ...room.players, [playerId]: updatedPlayer };
-          const updates: Partial<Room> = { players: updatedPlayers };
+          
+          const responseObj = {
+            teamName: player.name,
+            selectedAnswer: answerIndex !== null ? answerIndex : (writtenAnswer || ''),
+            isCorrect,
+            timestamp: Date.now()
+          };
+          
+          // Write to rooms/${pin}/responses/${playerId}
+          try {
+            const respRef = doc(db, 'rooms', pin, 'responses', playerId);
+            await setDoc(respRef, responseObj);
+          } catch (err) {
+            console.error("Failed to write subcollection responses:", err);
+          }
+
+          const updatedResponses = { ...(room.responses || {}), [playerId]: responseObj };
+          const updates: Partial<Room> = { 
+            players: updatedPlayers,
+            responses: updatedResponses
+          };
 
           const totalPlayers = Object.keys(updatedPlayers).length;
           const answeredCount = Object.values(updatedPlayers).filter((p: any) => p.answeredThisRound).length;
@@ -516,7 +542,19 @@ export async function submitStudentAnswer(
       };
 
       const updatedPlayers = { ...cachedRoom.players, [playerId]: updatedPlayer };
-      const updates: Partial<Room> = { players: updatedPlayers };
+      
+      const responseObj = {
+        teamName: player.name,
+        selectedAnswer: answerIndex !== null ? answerIndex : (writtenAnswer || ''),
+        isCorrect,
+        timestamp: Date.now()
+      };
+      const updatedResponses = { ...(cachedRoom.responses || {}), [playerId]: responseObj };
+
+      const updates: Partial<Room> = { 
+        players: updatedPlayers,
+        responses: updatedResponses
+      };
 
       const totalPlayers = Object.keys(updatedPlayers).length;
       const answeredCount = Object.values(updatedPlayers).filter((p: any) => p.answeredThisRound).length;
@@ -684,9 +722,18 @@ export async function adjustPlayerScore(pin: string, playerId: string, amount: n
             ...player,
             score: Math.max(0, player.score + amount)
           };
+          
           await updateDoc(roomRef, {
             [`players.${playerId}`]: updatedPlayer
           } as any);
+
+          // Direct target update in rooms/${pin}/teams/${playerId} subcollection as requested
+          try {
+            const teamDocRef = doc(db, 'rooms', pin, 'teams', playerId);
+            await setDoc(teamDocRef, { score: updatedPlayer.score, scoreAmount: updatedPlayer.score, teamName: player.name }, { merge: true });
+          } catch (e) {
+            console.error("Failed to write to teams/playerId subcollection:", e);
+          }
         }
       }
       return;

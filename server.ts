@@ -326,6 +326,7 @@ app.post('/api/room/:pin/start', (req, res) => {
     room.players[pid].writtenAnswer = '';
   }
 
+  room.responses = {}; // Reset responses!
   room.currentQuestionIndex = targetIndex;
   room.currentQuestionId = currentQuestionId || quiz.questions[targetIndex]?.id || null;
   
@@ -365,6 +366,8 @@ app.post('/api/room/:pin/activate-question', (req, res) => {
     room.players[pid].isCorrect = false;
     room.players[pid].pointsGained = 0;
   }
+
+  room.responses = {}; // Reset responses!
 
   console.log(`Room [${pin}] question [${q.id}] IS ACTIVE!`);
   res.json({ success: true, room });
@@ -444,6 +447,17 @@ app.post('/api/room/:pin/answer', (req, res) => {
   } else {
     player.streak = 0;
   }
+
+  // Record into room.responses
+  if (!room.responses) {
+    room.responses = {};
+  }
+  room.responses[playerId] = {
+    teamName: player.name,
+    selectedAnswer: answerIndex !== null ? answerIndex : (writtenAnswer || ''),
+    isCorrect: correct,
+    timestamp: Date.now()
+  };
 
   // Check if ALL players have answered. If so, automatically end the question timer
   const totalPlayers = Object.keys(room.players).length;
