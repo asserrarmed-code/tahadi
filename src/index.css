@@ -13,17 +13,17 @@
 
 /* 🇲🇦 Traditional Moroccan Architecture Zellij Classes */
 .bg-moroccan-zellij-dark {
-  background-color: #070e1c; /* Deep Imperial indigo night */
+  background-color: #0c1424; /* Deep Imperial indigo night */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%23115e59' fill-opacity='0.22'%3E%3Cpath d='M40 0l7 21 21 7-21 7-7 21-7-21-21-7 21-7zM0 0l3 10 10 3-10 3-3 10-3-10-10-3 10-3zM80 0l-3 10-10 3 10 3 3 10 3-10 10-3-10-3zM0 80l3-10 10-3-10-3-3-10-3 10-10 3 10 3zM80 80l-3-10-10-3 10-3 3-10 3 10 10 3-10 3z'/%3E%3Cg fill='%23b45309' fill-opacity='0.16'%3E%3Ccircle cx='40' cy='40' r='5'/%3E%3Ccircle cx='0' cy='0' r='3'/%3E%3Ccircle cx='80' cy='0' r='3'/%3E%3Ccircle cx='0' cy='80' r='3'/%3E%3Ccircle cx='80' cy='80' r='3'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
 .bg-moroccan-zellij-light {
-  background-color: #fcfdfd; /* Clean Alabaster White */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%230f766e' fill-opacity='0.05'%3E%3Cpath d='M40 0l7 21 21 7-21 7-7 21-7-21-21-7 21-7z'/%3E%3C/g%3E%3Cg fill='%23d97706' fill-opacity='0.04'%3E%3Ccircle cx='40' cy='40' r='4'/%3E%3C/g%3E%3C/svg%3E");
+  background-color: #f7fafc; /* Clean Alabaster White */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%2314b8a6' fill-opacity='0.08'%3E%3Cpath d='M40 0l7 21 21 7-21 7-7 21-7-21-21-7 21-7z'/%3E%3C/g%3E%3Cg fill='%23d97706' fill-opacity='0.10'%3E%3Ccircle cx='40' cy='40' r='4'/%3E%3C/g%3E%3C/svg%3E");
 }
 
 .bg-moroccan-marrakesh {
-  background-color: #581c1c; /* Terracotta Red / Warm Clay Marrakech background */
+  background-color: #4a1212; /* Terracotta Red / Warm Clay Marrakech background */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23991b1b' fill-opacity='0.3'%3E%3Cpath d='M30 0l5 15 15 5-15 5-5 15-5-15-15-5 15-5z'/%3E%3C/g%3E%3C/svg%3E");
 }
 
@@ -36,6 +36,112 @@
 .border-moroccan-emerald {
   border: 2px solid rgba(13, 148, 136, 0.45);
   box-shadow: 0 0 15px rgba(13, 148, 136, 0.12);
+}
+
+/* Tactile 3D Buttons for interactive children learning */
+.btn-3d {
+  position: relative;
+  transition: all 0.08s ease;
+  transform: translateY(0);
+}
+.btn-3d:active {
+  transform: translateY(4px);
+  box-shadow: none !important;
+}
+
+.btn-3d-rose {
+  position: relative;
+  transition: all 0.08s ease;
+  transform: translateY(0);
+  background-color: #d946ef;
+  color: white;
+  border-bottom: 6px solid #a21caf;
+}
+.btn-3d-rose:hover {
+  background-color: #e879f9;
+}
+.btn-3d-rose:active {
+  transform: translateY(4px);
+  border-bottom: 2px solid #a21caf;
+}
+
+.btn-3d-indigo {
+  position: relative;
+  transition: all 0.08s ease;
+  transform: translateY(0);
+  background-color: #1b43be;
+  color: white;
+  border-bottom: 6px solid #0f2ba1;
+}
+.btn-3d-indigo:hover {
+  background-color: #2e5ce6;
+}
+.btn-3d-indigo:active {
+  transform: translateY(4px);
+  border-bottom: 2px solid #0f2ba1;
+}
+
+.btn-3d-amber {
+  position: relative;
+  transition: all 0.08s ease;
+  transform: translateY(0);
+  background-color: #d97706;
+  color: white;
+  border-bottom: 6px solid #92400e;
+}
+.btn-3d-amber:hover {
+  background-color: #f59e0b;
+}
+.btn-3d-amber:active {
+  transform: translateY(4px);
+  border-bottom: 2px solid #92400e;
+}
+
+.btn-3d-emerald {
+  position: relative;
+  transition: all 0.08s ease;
+  transform: translateY(0);
+  background-color: #0d9488;
+  color: white;
+  border-bottom: 6px solid #115e59;
+}
+.btn-3d-emerald:hover {
+  background-color: #14b8a6;
+}
+.btn-3d-emerald:active {
+  transform: translateY(4px);
+  border-bottom: 2px solid #115e59;
+}
+
+/* Traditional Islamic Arch Clip */
+.moroccan-arch {
+  clip-path: polygon(50% 0%, 83% 12%, 100% 30%, 100% 100%, 0% 100%, 0% 30%, 17% 12%);
+}
+
+.moroccan-door-arch {
+  clip-path: polygon(50% 0%, 90% 15%, 100% 35%, 100% 100%, 0% 100%, 0% 35%, 10% 15%);
+}
+
+/* Astrolabe Circular Pattern Rotate */
+@keyframes astrolabe-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.astrolabe-rotate {
+  animation: astrolabe-spin 40s linear infinite;
+}
+
+/* Sparkles animation */
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+.animate-twinkle {
+  animation: star-twinkle 3s ease-in-out infinite;
 }
 
 /* Custom gorgeous animations for child-friendly quiz */
@@ -70,4 +176,13 @@
 .animate-pulse-ring {
   animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Soft floating neumorphic depth */
+.neumorphic-float {
+  box-shadow: 0 10px 25px -5px rgba(27, 67, 190, 0.12), 0 8px 10px -6px rgba(13, 148, 136, 0.08);
+}
+.neumorphic-float-dark {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(217, 119, 6, 0.15);
+}
+
 
