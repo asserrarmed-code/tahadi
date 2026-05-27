@@ -31,9 +31,9 @@ let aiClient: GoogleGenAI | null = null;
 
 function getAiClient(): GoogleGenAI {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is not defined. Please configure it in your Secrets panel.');
+      throw new Error('لم يتم تعيين متغير البيئة GEMINI_API_KEY أو VITE_GEMINI_API_KEY. الرجاء تهيئة مفتاح API الخاص بك في لوحة الإعدادات.');
     }
     aiClient = new GoogleGenAI({
       apiKey: apiKey,
