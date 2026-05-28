@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { ref, set, update, onValue } from 'firebase/database';
 import { db } from '../firebase';
-import { generateQuestionsFromAI, savePoolToFirebase } from '../services/gameEngine';
+import { generateQuestionsFromAI, savePoolToFirebase, generateLocalFallback } from '../services/gameEngine';
 
 interface Question {
   text: string;
@@ -63,6 +63,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
   const [poolQuestions, setPoolQuestions] = useState<Question[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [poolSource, setPoolSource] = useState<'ai' | 'local' | null>(null);
 
   // Real-time listener for current room state
   useEffect(() => {
@@ -119,11 +120,26 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         questionType === 'written' ? 'written' : 'mcq'
       );
       setPoolQuestions(generated);
+      setPoolSource('ai');
     } catch (err: any) {
       setGenerationError(err.message || 'فشل في توليد الأسئلة.');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleGenerateLocalQuestions = () => {
+    setGenerationError(null);
+    const theme = selectedTopic.trim() || 'عام مفاهيم عامة ومفتوحة';
+    const generated = generateLocalFallback(
+      selectedLevel,
+      selectedSubject,
+      theme,
+      questionCount,
+      questionType === 'written' ? 'written' : 'mcq'
+    );
+    setPoolQuestions(generated);
+    setPoolSource('local');
   };
 
   // Launch Competition Room Nodes
@@ -631,16 +647,26 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
 
             </div>
 
-            <button
-              onClick={handleGenerateQuestions}
-              disabled={isGenerating}
-              className={`w-full py-4.5 rounded-2xl text-slate-950 font-black text-xs transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer ${
-                isGenerating ? 'bg-amber-100/30 text-slate-400 cursor-wait' : 'bg-[#00E5FF] hover:bg-sky-400'
-              }`}
-            >
-              <Sparkles className="w-4 h-4 text-slate-950 animate-pulse" />
-              <span>{isGenerating ? 'بصانع التمريض البيداغوجي الفوري... ⏳' : 'توليد وتنشيط بيداغوجي بـ Gemini API 🪄'}</span>
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={handleGenerateQuestions}
+                disabled={isGenerating}
+                className={`w-full py-4.5 rounded-2xl text-slate-950 font-black text-xs transition-all shadow flex items-center justify-center gap-1.5 cursor-pointer ${
+                  isGenerating ? 'bg-amber-100/30 text-slate-400 cursor-wait' : 'bg-[#00E5FF] hover:bg-sky-400'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-slate-950 animate-pulse" />
+                <span>{isGenerating ? 'جاري الاستعلام من المعلم الذكي... ⏳' : 'توليد وتنشيط بيداغوجي بـ Gemini API 🪄'}</span>
+              </button>
+
+              <button
+                onClick={handleGenerateLocalQuestions}
+                disabled={isGenerating}
+                className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-755 text-amber-300 hover:text-amber-200 border border-slate-750 font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>📚 استخدام الأسئلة الجاهزة للمنهاج تلقائياً</span>
+              </button>
+            </div>
 
             {generationError && (
               <p className="text-xs text-rose-400 bg-rose-950/20 p-2 text-center rounded-xl border border-rose-900/30">
@@ -654,10 +680,21 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
         {/* Preview questions (1 col) */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-slate-900 rounded-3xl p-5 border border-indigo-950 text-white space-y-4 max-h-[380px] overflow-y-auto">
-            <h3 className="font-extrabold text-xs text-amber-200 flex items-center gap-1.5 pb-2 border-b border-indigo-950">
-              <Award className="w-4 h-4 text-[#00E5FF]" />
-              <span>معاينة الأسئلة في الخزينة ({poolQuestions.length})</span>
-            </h3>
+            <div className="flex justify-between items-center pb-2 border-b border-indigo-950">
+              <h3 className="font-extrabold text-xs text-amber-200 flex items-center gap-1.5">
+                <Award className="w-4 h-4 text-[#00E5FF]" />
+                <span>معاينة الأسئلة في الخزينة ({poolQuestions.length})</span>
+              </h3>
+              {poolQuestions.length > 0 && (
+                <span className={`text-[9px] px-2 py-0.5 rounded-full font-black ${
+                  poolSource === 'ai' 
+                    ? 'bg-[#00E5FF]/10 text-[#00E5FF] border border-[#00E5FF]/20' 
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                }`}>
+                  {poolSource === 'ai' ? '✨ ذكاء اصطناعي' : '📚 أسئلة جاهزة'}
+                </span>
+              )}
+            </div>
 
             {poolQuestions.length === 0 ? (
               <div className="py-16 text-center text-slate-500 space-y-2">

@@ -58,9 +58,9 @@ export async function generateQuestionsFromAI(
     } else {
       throw new Error(data.error || 'الاستجابة المستلمة ليست تنسيقاً صالحاً.');
     }
-  } catch (err) {
-    console.error('⚠️ تعذر الاستدعاء من الخلفية، جاري تفعيل المولد الاحتياطي فوري القيمة:', err);
-    return generateLocalFallback(level, subject, topic, count, type);
+  } catch (err: any) {
+    console.error('⚠️ تعذر الاستدعاء من الخلفية:', err);
+    throw new Error(err.message || 'فشل الاتصال بالذكاء الاصطناعي لتوليد الأسئلة. يرجى تكرار المحاولة أو التحقق من مفتاح API.');
   }
 }
 
@@ -92,7 +92,7 @@ export async function savePoolToFirebase(roomPIN: string, questions: Question[])
 /**
  * مولد أسئلة محلي واحتياطي غني بالمواضيع لضمان استمرارية التطبيق
  */
-function generateLocalFallback(
+export function generateLocalFallback(
   level: string,
   subject: string,
   topic: string,
