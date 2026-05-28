@@ -150,6 +150,100 @@ ${pedagogicalEnforcement}
   }
 });
 
+// GET CLASSIC FORMAT QUESTIONS SECURELY ON BACKEND
+app.post('/api/gemini/generate-classic-questions', async (req, res) => {
+  const { subject, topic, level, count, type } = req.body;
+
+  try {
+    const ai = getAiClient();
+    const finalCount = Number(count) || 3;
+    const finalType = type === 'written' ? 'written' : 'mcq';
+
+    const isIslamic = subject && (subject.includes('إسلامية') || subject.includes('اسلامية'));
+    const isArabicSixth = subject && (subject.includes('عربية') || subject.includes('عربي')) && level && level.includes('السادس');
+
+    let pedagogicalEnforcement = '';
+    if (isIslamic) {
+      pedagogicalEnforcement = `**قاعدة بيداغوجية ملزمة للمنهاج المغربي:** في مادة التربية الإسلامية، يجب استخدام مصطلح "الفرائض" بدلاً من "الأركان" (مثال: فرائض الوضوء، فرائض الصلاة)، وتجنب خلط المفاهيم للأطفال الصغار.`;
+    } else if (isArabicSixth) {
+      pedagogicalEnforcement = `**قاعدة بيداغوجية ملزمة للمنهاج المغربي للمستوى السادس:** يمتنع منعا باتا وبشكل قاطع إدراج أسئلة أو خيارات تتعلق بدرس "التوكيد" أو درس "المستثنى"، حيث تم تأجيلها أو استبعادها لتبسيط الاستيعاب. ركز بدلا من ذلك على دروس المفعول المطلق، المفعول لأجله، التمييز، أو التراكيب الأساسية الأخرى.`;
+    }
+
+    const prompt = `أنت مصمم مناهج ورشات دراسية خبير ومرح للمدارس الابتدائية بالمملكة المغربية.
+قم بتوليد ${finalCount} أسئلة بجودة بيداغوجية عالية ومناسبة وممتعة للأدوات المجهزة للتفاعل للأطفال بالابتدائي.
+المستوى الدراسي: ${level || 'المستوى الثالث'}
+المادة المدرسية: ${subject || 'الرياضيات'}
+الموضوع أو المكون: ${topic || 'ثقافة عامة ومراجعة شاملة'}
+التبسيط الديدكتيكي والقيود الملزمة: ${pedagogicalEnforcement}
+
+أسلوب الأسئلة: بأسلوب مغربي محلي لطيف ومشجع للأطفال، يفضل ذكر شخصيات من الثقافة البيئية المغربية مثل (يوسف، أمينة، فاطمة، أحمد) أو وجبات مغربية لذيذة (طاجين، كسكس، الحريرية، الشباكية) لزيادة الاندماج والارتباط الثقافي المتين.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.5-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: `أنت مصمم مناهج دراسية خبير ومرح للمدارس الابتدائية بالمملكة المغربية. يجب عليك الاستجابة بصيغة مصفوفة JSON نظيفة ومباشرة كلياً بدون أي كتابة جانبية قبل أو بعد الـ JSON وبدون علامات شريحة مشفرة.`,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          description: 'قائمة الأسئلة المولدة بصيغة كلاسيكية',
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              text: { 
+                type: Type.STRING, 
+                description: 'نص السؤال بشكل مبسط ومناسب للأطفال، محترم للقواعد البيداغوجية المحددة في التوجيهات.' 
+              },
+              options: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: 'أربعة خيارات ذكية وجاذبة بالنسبة للـ MCQ، أو خيار واحد أو كلمات مفتاحية في حالة السؤال الخطي.'
+              },
+              correctAnswer: { 
+                type: Type.STRING, 
+                description: 'الخيار الصحيح المطابق تماماً وأصلياً لأحد الخيارات الأربعة السابقة (أو الكلمة الصحيحة المباشرة في حالة السؤال الخطي)' 
+              },
+              points: { 
+                type: Type.INTEGER, 
+                description: 'النقاط المحددة للسؤال (مثلا 1000 أو 1200)' 
+              },
+              type: { 
+                type: Type.STRING, 
+                description: 'نوع السؤال، يجب أن يكون محدد بـ "mcq" أو "written"' 
+              }
+            },
+            required: ['text', 'options', 'correctAnswer', 'points', 'type']
+          }
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) {
+      throw new Error('لم يقم النموذج بتوليد أي محتوى.');
+    }
+
+    try {
+      const questionsList = JSON.parse(text);
+      res.json({ success: true, questions: questionsList });
+    } catch (parseErr) {
+      console.error('Failed to parse classic questions output:', text);
+      res.status(500).json({ 
+        success: false, 
+        error: 'فشل تحليل الاستجابة المولدة من الذكاء الاصطناعي كـ JSON صالح.',
+        rawText: text 
+      });
+    }
+
+  } catch (error: any) {
+    console.error('Error in generate-classic-questions:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error?.message || 'فشل توليد الأسئلة الكلاسيكية بسبب خطأ داخلي.' 
+    });
+  }
+});
+
 // REST API for high-quality pedagogical Hint generation using Gemini
 app.post('/api/gemini/generate-hint', async (req, res) => {
   const { questionText, subject } = req.body;

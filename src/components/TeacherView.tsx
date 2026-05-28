@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { ref, set, update, onValue } from 'firebase/database';
 import { db } from '../firebase';
+import { generateQuestionsFromAI, savePoolToFirebase } from '../services/gameEngine';
 
 interface Question {
   text: string;
@@ -107,142 +108,22 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     setIsGenerating(true);
     setGenerationError(null);
 
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     const theme = selectedTopic.trim() || 'عام مفاهيم عامة ومفتوحة';
 
     try {
-      if (!apiKey) {
-        throw new Error("لم يتم العثور على VITE_GEMINI_API_KEY. الرجاء إدخاله في إعدادات البيئة (Vercel/Local).");
-      }
-
-      const isIslamic = selectedSubject.includes('إسلامية') || selectedSubject.includes('اسلامية');
-      const isArabicSixth = (selectedSubject.includes('عربية') || selectedSubject.includes('عربي')) && selectedLevel.includes('السادس');
-      
-      let pedagogicalRule = '';
-      if (isIslamic) {
-        pedagogicalRule = `**قاعدة بيداغوجية ملزمة للمنهاج المغربي:** في التربية الإسلامية، استعمل مصطلح "الفرائض" بدلاً من "الأركان" (مثال: فرائض الوضوء، فرائض الصلاة).`;
-      } else if (isArabicSixth) {
-        pedagogicalRule = `**قاعدة بيداغوجية ملزمة للمنهاج المغربي للمستوى السادس:** يمنع منعاً باتاً صياغة أسئلة أو خيارات حول درس "التوكيد" أو درس "المستثنى".`;
-      }
-
-      const systemInstruction = "أنت مصمم مناهج ورشات دراسية خبير ومرح للمدارس الابتدائية بالمملكة المغربية. يجب عليك الاستجابة بصيغة JSON نظيفة ومباشرة كلياً بدون أي كتابة جانبية قبل أو بعد الـ JSON.";
-      const prompt = `قم بتوليد ${questionCount} أسئلة بجودة بيداغوجية عالية ومناسبة وممتعة للأدوات المجهزة للتفاعل.
-المستوى الدراسي: ${selectedLevel}
-المادة: ${selectedSubject}
-الموضوع: ${theme}
-التبسيط الديدكتيكي المعتمد: ${pedagogicalRule}
-
-صيغة المخرجات يجب أن تكون مصفوفة JSON تحتوي على كائنات بالبنية التالية تماماً:
-[
-  {
-    "text": "نص السؤال بأسلوب مغربي لطيف ومشجع للأطفال مع ذكر شخصيات مغربية مثل (أمينة، يوسف، فاطمة) أو طبخات مغربية (طاجين، كسكس)",
-    "options": ["خيار 1", "خيار 2", "خيار 3", "خيار 4"],
-    "correctAnswer": "الخيار الصحيح المطابق تماماً وأصلياً لأحد الخيارات الأربعة السابقة",
-    "points": 1000,
-    "type": "${questionType}"
-  }
-]`;
-
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: "application/json",
-            systemInstruction: { parts: [{ text: systemInstruction }] }
-          }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`استجابة خاطئة من خادم Gemini API.`);
-      }
-
-      const resData = await response.json();
-      const text = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        throw new Error("خادم الذكاء الاصطناعي أرجع جواباً فارغاً.");
-      }
-
-      const generated = JSON.parse(text) as Question[];
-      if (Array.isArray(generated) && generated.length > 0) {
-        setPoolQuestions(generated);
-      } else {
-        throw new Error("قالب JSON المستلم غير صالح.");
-      }
+      const generated = await generateQuestionsFromAI(
+        selectedSubject,
+        theme,
+        selectedLevel,
+        questionCount,
+        questionType === 'written' ? 'written' : 'mcq'
+      );
+      setPoolQuestions(generated);
     } catch (err: any) {
-      console.warn("Gemini Client call issue, initiating beautiful Moroccan fallback database:", err);
-      // Resilience Moroccan Fallback Questions Builder
-      const fallbacks: Question[] = generateLocalFallback(selectedLevel, selectedSubject, theme, questionCount, questionType);
-      setPoolQuestions(fallbacks);
+      setGenerationError(err.message || 'فشل في توليد الأسئلة.');
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  // Moroccan Curriculum fallback generator
-  const generateLocalFallback = (lvl: string, sbj: string, topic: string, count: number, type: string): Question[] => {
-    const list: Question[] = [];
-    const defaults: Record<string, Omit<Question, 'points' | 'type'>> = {
-      'اللغة العربية': {
-        text: "أي من الجمل التالية تشتمل على 'مفعول لأجله' منصوب يوضح علة وقوع الفعل؟",
-        options: [
-          "حفظ سليمان القرآن طاعةً لله ورغبةً في ثوابه.",
-          "قرأ الأستاذ يوسف كتاب التذكرة قراءةً متأنية.",
-          "سافر المغامر ابن بطوطة صباحاً عبر طنجة.",
-          "العلم نور يضيء عقول الباحثين بجد ونشاط."
-        ],
-        correctAnswer: "حفظ سليمان القرآن طاعةً لله ورغبةً في ثوابه."
-      },
-      'التربية الإسلامية': {
-        text: "ما هو الحكم الفقهي الصحيح لغسل الوجه واليدين إلى المرفقين في الفقه الإسلامي؟",
-        options: [
-          "فرائض من فرائض الطهارة (الوضوء)",
-          "سنن مستحبة ومؤكدة فقط",
-          "مستحبات فضيلة مستحسنة",
-          "مكروهات تبطل غسل الأعضاء"
-        ],
-        correctAnswer: "فرائض من فرائض الطهارة (الوضوء)"
-      },
-      'الرياضيات': {
-        text: "اشترى يوسف طاجيناً بسعر 45 درهماً، وحصل على تخفيض بقيمة 10%. كم درهماً وفر يوسف؟",
-        options: [
-          "4.5 دراهم توفير",
-          "5 دراهم توفير",
-          "40.5 درهماً توفير",
-          "10 دراهم كاملة"
-        ],
-        correctAnswer: "4.5 دراهم توفير"
-      },
-      'النشاط العلمي': {
-        text: "ما هما الغازان الأساسيان المكونان للهواء الجوي المحيط بكوكب الأرض؟",
-        options: [
-          "الأكسجين والآزوت (النيتروجين)",
-          "الأكسجين وثاني أوكسيد الكربون",
-          "النيتروجين وغاز الأرجون الدقيق",
-          "الهيدروجين وبخار الماء الجوي"
-        ],
-        correctAnswer: "الأكسجين والآزوت (النيتروجين)"
-      }
-    };
-
-    const activeTemplate = defaults[sbj] || {
-      text: `سؤال تفاعلي للمستوى ${lvl} في مادة ${sbj} حول ${topic}`,
-      options: ["الخيار الأول", "الخيار الثاني (الصواب)", "الخيار الثالث", "الخيار الرابع"],
-      correctAnswer: "الخيار الثاني (الصواب)"
-    };
-
-    for (let i = 0; i < count; i++) {
-      list.push({
-        text: i === 0 ? activeTemplate.text : `سؤال معملي تفاعلي رقم ${i + 1} عن ${topic}: حدد الصواب بدقة.`,
-        options: [...activeTemplate.options],
-        correctAnswer: activeTemplate.correctAnswer,
-        points: 1000 + (i * 100),
-        type: type
-      });
-    }
-    return list;
   };
 
   // Launch Competition Room Nodes
@@ -256,18 +137,12 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
     localStorage.setItem('school_teacher_active_room_pin', randomPin);
     
-    const roomRef = ref(db, `rooms/${randomPin}`);
-    const initialRoom: RoomState = {
-      pin: randomPin,
-      status: 'setup',
-      currentQuestionIndex: -1,
-      questionsPool: poolQuestions,
-      currentQuestion: null,
-      responses: {}
-    };
-
-    await set(roomRef, initialRoom);
-    setRoomPIN(randomPin);
+    try {
+      await savePoolToFirebase(randomPin, poolQuestions);
+      setRoomPIN(randomPin);
+    } catch (err: any) {
+      alert("تعذر حفظ وإعداد الغرفة في قاعدة البيانات الحالية: " + err.message);
+    }
   };
 
   // State Machine Action: Start Competition
