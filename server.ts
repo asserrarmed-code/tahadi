@@ -79,7 +79,7 @@ ${pedagogicalEnforcement}
 من فضلك تأكد من أن الأسئلة مناسبة للأطفال الابتدائي (بأسلوب مشجع ومبهج، مستلهماً البيئة أو الأسماء المغربية مثل: يوسف، أمينة، طاجين، أطلس، إلخ)، وأن هناك إجابة واحدة صحيحة وثلاث خيارات مشتتة واضحة ومناسبة للمرحلة السنية المذكورة.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction: `أنت مولد أسئلة بيداغوجي مخصص لتطبيق "مسابقات القسم" المغربي.
@@ -179,7 +179,7 @@ app.post('/api/gemini/generate-classic-questions', async (req, res) => {
 أسلوب الأسئلة: بأسلوب مغربي محلي لطيف ومشجع للأطفال، يفضل ذكر شخصيات من الثقافة البيئية المغربية مثل (يوسف، أمينة، فاطمة، أحمد) أو وجبات مغربية لذيذة (طاجين، كسكس، الحريرية، الشباكية) لزيادة الاندماج والارتباط الثقافي المتين.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction: `أنت مصمم مناهج دراسية خبير ومرح للمدارس الابتدائية بالمملكة المغربية. يجب عليك الاستجابة بصيغة مصفوفة JSON نظيفة ومباشرة كلياً بدون أي كتابة جانبية قبل أو بعد الـ JSON وبدون علامات شريحة مشفرة.`,
@@ -254,7 +254,7 @@ app.post('/api/gemini/generate-hint', async (req, res) => {
 تجنب إعطاء الجواب الصريح مباشرة، بل قدم دلالة لطيفة أو توجيها ذكيا بأسلوب مغربي يثير الفضول والانتباه للتعلم.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction: 'أنت فيلسوف بيداغوجي مبهج وسريع البديهة تعطي تسريبات وتلميحات غير مباشرة للأطفال بالقسم المغربي.',
@@ -615,7 +615,7 @@ app.post('/api/room/:pin/powerup', async (req, res) => {
 قدم تلميحاً بيداغوجياً ذكياً وقصيراً جداً (لا يتجاوز 12 كلمة)، لمساعدته على حل السؤال: "${q.text}" في مادة ${q.subject || 'عام'}.
 لا تعطه الجواب الصريح أبداً، بل وجِّهه للحل بدلالة لطيفة.`;
           const response = await ai.models.generateContent({
-            model: 'gemini-3.5-flash',
+            model: 'gemini-2.0-flash',
             contents: prompt,
             config: {
               systemInstruction: 'أنت فيلسوف الصف المغربي المبهج تيسر الفهم وتعطي تلميحات ذكية ومحفزة للأطفال بالقسم.',
