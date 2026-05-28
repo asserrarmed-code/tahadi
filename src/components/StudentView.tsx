@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Check, X, Clock, HelpCircle, Trophy, Sparkles, Send, Brain, ArrowLeft, Zap, Shield, Flame
 } from 'lucide-react';
-import { ref, set, onValue, get } from 'firebase/database';
+import { ref, set, onValue, get, runTransaction } from 'firebase/database';
 import { db } from '../firebase';
 import { MOROCCAN_AVATARS } from '../data';
 
@@ -98,7 +98,7 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
     }
   }, [roomVal?.currentQuestionIndex, roomVal?.status]);
 
-  // Handle Score Auto calculation on state transition to reveal
+  // حساب النقاط عند الانتقال لـ reveal — runTransaction يمنع التعارض بين أجهزة متعددة
   useEffect(() => {
     if (roomVal && roomVal.status === 'reveal' && playerId && isJoined) {
       const currentIdx = roomVal.currentQuestionIndex;
@@ -107,12 +107,11 @@ export default function StudentView({ onBackToMain }: StudentViewProps) {
 
         const responseState = roomVal.responses?.[playerId];
         if (responseState && responseState.isCorrect) {
-          const currentScore = roomVal.teams?.[playerId]?.score || 0;
           const points = roomVal.currentQuestion?.points || 1000;
-          const newScore = currentScore + points;
-
-          // Push new score to Firebase RTDB path
-          set(ref(db, `rooms/${roomPin}/teams/${playerId}/score`), newScore);
+          // ✅ runTransaction: إضافة آمنة بدون read-then-write race condition
+          runTransaction(ref(db, `rooms/${roomPin}/teams/${playerId}/score`), (currentScore) => {
+            return (currentScore || 0) + points;
+          });
         }
       }
     }
