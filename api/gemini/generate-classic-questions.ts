@@ -1,132 +1,115 @@
-import { GoogleGenAI, Type } from '@google/genai';
+// Vercel Serverless Function — لا تستخدم @google/genai SDK لتجنب تعارض ESM/CJS
+// بدلاً من ذلك نستدعي Gemini REST API مباشرة عبر fetch
 
-// ─── تهيئة Gemini ─────────────────────────────────────────────────────────────
-function getAiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error(
-      'مفتاح GEMINI_API_KEY غير موجود في متغيرات البيئة. ' +
-      'أضفه في لوحة Vercel → Settings → Environment Variables.'
-    );
-  }
-  return new GoogleGenAI({ apiKey });
-}
-
-// ─── Handler الرئيسي (Vercel Serverless Function) ─────────────────────────────
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({
+      success: false,
+      error: 'مفتاح GEMINI_API_KEY غير موجود. أضفه في Vercel → Settings → Environment Variables.',
+    });
+  }
+
   const { subject, topic, level, count, type } = req.body || {};
+  const finalCount = Math.min(Number(count) || 3, 10);
+  const finalType = type === 'written' ? 'written' : 'mcq';
+
+  // ── ضوابط بيداغوجية ──
+  const isIslamic = subject?.includes('إسلامية') || subject?.includes('اسلامية');
+  const isArabicSixth =
+    (subject?.includes('عربية') || subject?.includes('عربي')) && level?.includes('السادس');
+
+  let pedagogicalNote = '';
+  if (isIslamic) {
+    pedagogicalNote = 'استخدم مصطلح "الفرائض" بدلاً من "الأركان" دائماً في التربية الإسلامية.';
+  } else if (isArabicSixth) {
+    pedagogicalNote = 'تجنب تمامًا أسئلة "التوكيد" و"المستثنى". ركّز على: المفعول المطلق، المفعول لأجله، التمييز.';
+  }
+
+  const prompt = [
+    `أنت مصمم مناهج خبير ومرح للمدارس الابتدائية بالمملكة المغربية.`,
+    `قم بتوليد ${finalCount} أسئلة بيداغوجية عالية الجودة وممتعة.`,
+    `المستوى: ${level || 'المستوى الثالث'}`,
+    `المادة: ${subject || 'الرياضيات'}`,
+    `الموضوع: ${topic || 'ثقافة عامة'}`,
+    `نوع الأسئلة: ${finalType === 'written' ? 'كتابية (إجابة نصية قصيرة)' : 'اختيار من متعدد QCM - 4 خيارات'}`,
+    pedagogicalNote,
+    `أسلوب مغربي لطيف: استلهم الأسماء المغربية (يوسف، أمينة، فاطمة) والوجبات المغربية (طاجين، كسكس).`,
+    ``,
+    `⚠️ مهم جداً: يجب أن يكون correctAnswer مطابقاً تماماً لأحد عناصر options.`,
+    ``,
+    `أجب بـ JSON مصفوفة نظيفة فقط، كل عنصر بهذا الشكل:`,
+    `{ "text": "...", "options": ["أ", "ب", "ج", "د"], "correctAnswer": "أ", "points": 1000, "type": "mcq" }`,
+  ].filter(Boolean).join('\n');
 
   try {
-    const ai = getAiClient();
-
-    const finalCount = Math.min(Number(count) || 3, 10); // حد أقصى 10 أسئلة
-    const finalType = type === 'written' ? 'written' : 'mcq';
-
-    // ── ضوابط بيداغوجية ملزمة ──
-    const isIslamic =
-      subject && (subject.includes('إسلامية') || subject.includes('اسلامية'));
-    const isArabicSixth =
-      subject &&
-      (subject.includes('عربية') || subject.includes('عربي')) &&
-      level &&
-      level.includes('السادس');
-
-    let pedagogicalEnforcement = '';
-    if (isIslamic) {
-      pedagogicalEnforcement =
-        '**قاعدة ملزمة:** استخدم "الفرائض" بدلاً من "الأركان" في التربية الإسلامية.';
-    } else if (isArabicSixth) {
-      pedagogicalEnforcement =
-        '**قاعدة ملزمة للمستوى السادس:** تجنب "التوكيد" و"المستثنى". ' +
-        'ركّز على: المفعول المطلق، المفعول لأجله، التمييز.';
-    }
-
-    const prompt =
-      `أنت مصمم مناهج خبير ومرح للمدارس الابتدائية بالمملكة المغربية.\n` +
-      `قم بتوليد ${finalCount} أسئلة بيداغوجية عالية الجودة وممتعة.\n` +
-      `المستوى: ${level || 'المستوى الثالث'}\n` +
-      `المادة: ${subject || 'الرياضيات'}\n` +
-      `الموضوع: ${topic || 'ثقافة عامة'}\n` +
-      `نوع الأسئلة: ${finalType === 'written' ? 'أسئلة كتابية (إجابة نصية)' : 'أسئلة اختيار من متعدد QCM'}\n` +
-      `${pedagogicalEnforcement}\n\n` +
-      `أسلوب مغربي لطيف: استلهم الأسماء المغربية (يوسف، أمينة، فاطمة) والوجبات المغربية (طاجين، كسكس) لزيادة الاندماج.\n\n` +
-      `تنبيه مهم: يجب أن يكون correctAnswer مطابقاً تماماً لأحد عناصر options.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',   // ✅ اسم النموذج الصحيح
-      contents: prompt,
-      config: {
-        systemInstruction:
-          'أنت مصمم مناهج خبير للمدارس الابتدائية المغربية. ' +
-          'أجب بـ JSON مصفوفة نظيفة فقط، بدون أي نص إضافي أو غلاف Markdown.',
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.ARRAY,
-          description: 'قائمة الأسئلة الكلاسيكية المولدة',
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              text: {
-                type: Type.STRING,
-                description: 'نص السؤال مناسب للأطفال، مراعياً القيود البيداغوجية.',
-              },
-              options: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description:
-                  'للـ MCQ: أربعة خيارات بالضبط. للكتابي: مصفوفة بعنصر واحد هو الجواب الصحيح.',
-              },
-              correctAnswer: {
-                type: Type.STRING,
-                description:
-                  'الجواب الصحيح — يجب أن يكون مطابقاً تماماً لأحد عناصر options.',
-              },
-              points: {
-                type: Type.INTEGER,
-                description: 'النقاط (1000 أو 1200 أو 1500).',
-              },
-              type: {
-                type: Type.STRING,
-                description: 'نوع السؤال: "mcq" أو "written".',
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  text:          { type: 'STRING' },
+                  options:       { type: 'ARRAY', items: { type: 'STRING' } },
+                  correctAnswer: { type: 'STRING' },
+                  points:        { type: 'INTEGER' },
+                  type:          { type: 'STRING' },
+                },
+                required: ['text', 'options', 'correctAnswer', 'points', 'type'],
               },
             },
-            required: ['text', 'options', 'correctAnswer', 'points', 'type'],
           },
-        },
-      },
-    });
+          systemInstruction: {
+            parts: [{
+              text: 'أنت مصمم مناهج خبير للمدارس الابتدائية المغربية. أجب بـ JSON مصفوفة نظيفة فقط، بدون أي نص إضافي.',
+            }],
+          },
+        }),
+      }
+    );
 
-    const text = response.text;
-    if (!text) throw new Error('النموذج لم يُنتج أي محتوى.');
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error('[generate-classic-questions] Gemini API error:', errText);
+      return res.status(500).json({
+        success: false,
+        error: `خطأ من Gemini API: ${geminiRes.status} — تحقق من GEMINI_API_KEY.`,
+      });
+    }
 
-    // تنظيف غلاف Markdown إن وجد
-    const clean = text.replace(/```json|```/g, '').trim();
+    const geminiData = await geminiRes.json();
+    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      return res.status(500).json({ success: false, error: 'Gemini لم يُرجع محتوى.' });
+    }
+
+    const clean = rawText.replace(/```json|```/g, '').trim();
     const questions = JSON.parse(clean);
 
-    // ── التحقق: correctAnswer يجب أن يوجد ضمن options ──
+    // ── تحقق: correctAnswer يجب أن يوجد ضمن options ──
     const validated = questions.map((q: any) => {
       const opts: string[] = Array.isArray(q.options) ? q.options : [];
-      const hasMatch = opts.some(
+      const match = opts.find(
         (o: string) => o.trim().toLowerCase() === (q.correctAnswer || '').trim().toLowerCase()
       );
-      if (!hasMatch && opts.length > 0) {
-        // إذا لم يتطابق: استخدم الخيار الأول كحل احتياطي
-        console.warn(`[generate-classic-questions] correctAnswer لا يتطابق مع options للسؤال: "${q.text}". الانتقال للخيار الأول.`);
-        return { ...q, correctAnswer: opts[0] };
-      }
-      return q;
+      return { ...q, correctAnswer: match || opts[0] || q.correctAnswer };
     });
 
     return res.status(200).json({ success: true, questions: validated });
-  } catch (error: any) {
-    console.error('[generate-classic-questions] خطأ:', error);
-    return res.status(500).json({
-      success: false,
-      error: error?.message || 'فشل توليد الأسئلة. تحقق من GEMINI_API_KEY.',
-    });
+  } catch (err: any) {
+    console.error('[generate-classic-questions]', err);
+    return res.status(500).json({ success: false, error: err.message || 'خطأ داخلي.' });
   }
 }
