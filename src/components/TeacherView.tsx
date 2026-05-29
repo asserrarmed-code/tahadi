@@ -149,15 +149,17 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
       return;
     }
 
-    // Auto generate 4 digit PIN
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
     localStorage.setItem('school_teacher_active_room_pin', randomPin);
-    
+
+    // ✅ الانتقال الفوري للكوكبت بدون انتظار Firebase
+    setRoomPIN(randomPin);
+
+    // حفظ في Firebase في الخلفية
     try {
       await savePoolToFirebase(randomPin, poolQuestions);
-      setRoomPIN(randomPin);
     } catch (err: any) {
-      alert("تعذر حفظ وإعداد الغرفة في قاعدة البيانات الحالية: " + err.message);
+      console.warn("تحذير Firebase:", err.message);
     }
   };
 
@@ -282,10 +284,25 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
   }
 
   // Active Live Competition Admin cockpit
-  if (roomPIN && roomVal) {
-    const activeQ = roomVal.currentQuestion;
-    const teamsList = roomVal.teams ? Object.values(roomVal.teams) : [];
-    const responsesList = roomVal.responses ? Object.values(roomVal.responses) : [];
+  if (roomPIN) {
+    // roomVal قد يكون null مؤقتاً ريثما يتصل Firebase — نعرض الكوكبت فوراً
+    const activeQ = roomVal?.currentQuestion ?? null;
+    const teamsList = roomVal?.teams ? Object.values(roomVal.teams) : [];
+    const responsesList = roomVal?.responses ? Object.values(roomVal.responses) : [];
+
+    // شاشة تحميل Firebase إذا لم تصل البيانات بعد
+    if (!roomVal) {
+      return (
+        <div className="w-full max-w-7xl mx-auto px-4 py-6 text-right flex flex-col items-center justify-center gap-4 min-h-[60vh]" dir="rtl">
+          <div className="text-6xl animate-spin">⚙️</div>
+          <h2 className="text-2xl font-black text-amber-400">جاري تهيئة الغرفة…</h2>
+          <p className="text-slate-400 text-sm">رمز الغرفة: <span className="text-amber-300 font-mono text-xl font-black">{roomPIN}</span></p>
+          <p className="text-slate-500 text-xs mt-2">
+            إذا استمر الانتظار أكثر من 10 ثوانٍ، تحقق من إعدادات Firebase في Vercel.
+          </p>
+        </div>
+      );
+    }
 
     return (
       <div className="w-full max-w-7xl mx-auto px-4 py-6 md:py-8 text-right space-y-6" dir="rtl">
