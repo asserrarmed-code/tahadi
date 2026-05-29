@@ -152,14 +152,24 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
     localStorage.setItem('school_teacher_active_room_pin', randomPin);
 
-    // ✅ الانتقال الفوري للكوكبت بدون انتظار Firebase
+    // ✅ ضبط roomVal محلياً فوراً — الكوكبت يظهر بدون انتظار Firebase
+    const initialRoom: RoomState = {
+      pin: randomPin,
+      status: 'setup',
+      currentQuestionIndex: -1,
+      questionsPool: poolQuestions,
+      currentQuestion: null,
+      responses: undefined,
+      teams: {}
+    };
+    setRoomVal(initialRoom);
     setRoomPIN(randomPin);
 
-    // حفظ في Firebase في الخلفية
+    // محاولة المزامنة مع Firebase في الخلفية (اختياري)
     try {
       await savePoolToFirebase(randomPin, poolQuestions);
     } catch (err: any) {
-      console.warn("تحذير Firebase:", err.message);
+      console.warn("تحذير Firebase (غير حرج - التطبيق يعمل محلياً):", err.message);
     }
   };
 
@@ -290,19 +300,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     const teamsList = roomVal?.teams ? Object.values(roomVal.teams) : [];
     const responsesList = roomVal?.responses ? Object.values(roomVal.responses) : [];
 
-    // شاشة تحميل Firebase إذا لم تصل البيانات بعد
-    if (!roomVal) {
-      return (
-        <div className="w-full max-w-7xl mx-auto px-4 py-6 text-right flex flex-col items-center justify-center gap-4 min-h-[60vh]" dir="rtl">
-          <div className="text-6xl animate-spin">⚙️</div>
-          <h2 className="text-2xl font-black text-amber-400">جاري تهيئة الغرفة…</h2>
-          <p className="text-slate-400 text-sm">رمز الغرفة: <span className="text-amber-300 font-mono text-xl font-black">{roomPIN}</span></p>
-          <p className="text-slate-500 text-xs mt-2">
-            إذا استمر الانتظار أكثر من 10 ثوانٍ، تحقق من إعدادات Firebase في Vercel.
-          </p>
-        </div>
-      );
-    }
+
 
     return (
       <div className="w-full max-w-7xl mx-auto px-4 py-6 md:py-8 text-right space-y-6" dir="rtl">
