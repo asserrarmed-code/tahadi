@@ -1,49 +1,55 @@
-// Vercel Serverless Function — لا تستخدم @google/genai SDK لتجنب تعارض ESM/CJS
-// بدلاً من ذلك نستدعي Gemini REST API مباشرة عبر fetch
+// Vercel Serverless Function — Gemini REST API (لا SDK)
+
+async function parseBody(req: any): Promise<any> {
+  // Vercel يحلل الـ body تلقائياً — لكن نضيف fallback يدوي للأمان
+  if (req.body && typeof req.body === 'object') return req.body;
+  return new Promise((resolve) => {
+    let data = '';
+    req.on('data', (chunk: any) => { data += chunk; });
+    req.on('end', () => {
+      try { resolve(JSON.parse(data)); }
+      catch { resolve({}); }
+    });
+  });
+}
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ success: false, error: 'Method not allowed' });
-  }
+  // CORS headers لضمان قبول الطلبات من frontend
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || '';
   if (!apiKey) {
     return res.status(500).json({
       success: false,
-      error: 'مفتاح GEMINI_API_KEY غير موجود. أضفه في Vercel → Settings → Environment Variables.',
+      error: 'GEMINI_API_KEY غير موجود في Vercel Environment Variables. أضفه في: Settings → Environment Variables → اسم المتغير: GEMINI_API_KEY',
     });
   }
 
-  const { subject, topic, level, count, type } = req.body || {};
+  const body = await parseBody(req);
+  const { subject, topic, level, count, type } = body;
   const finalCount = Math.min(Number(count) || 3, 10);
   const finalType = type === 'written' ? 'written' : 'mcq';
 
-  // ── ضوابط بيداغوجية ──
   const isIslamic = subject?.includes('إسلامية') || subject?.includes('اسلامية');
-  const isArabicSixth =
-    (subject?.includes('عربية') || subject?.includes('عربي')) && level?.includes('السادس');
+  const isArabicSixth = (subject?.includes('عربية') || subject?.includes('عربي')) && level?.includes('السادس');
 
   let pedagogicalNote = '';
-  if (isIslamic) {
-    pedagogicalNote = 'استخدم مصطلح "الفرائض" بدلاً من "الأركان" دائماً في التربية الإسلامية.';
-  } else if (isArabicSixth) {
-    pedagogicalNote = 'تجنب تمامًا أسئلة "التوكيد" و"المستثنى". ركّز على: المفعول المطلق، المفعول لأجله، التمييز.';
-  }
+  if (isIslamic) pedagogicalNote = 'استخدم "الفرائض" بدلاً من "الأركان" دائماً.';
+  else if (isArabicSixth) pedagogicalNote = 'تجنب "التوكيد" و"المستثنى". ركّز على المفعول المطلق، لأجله، التمييز.';
 
   const prompt = [
-    `أنت مصمم مناهج خبير ومرح للمدارس الابتدائية بالمملكة المغربية.`,
-    `قم بتوليد ${finalCount} أسئلة بيداغوجية عالية الجودة وممتعة.`,
-    `المستوى: ${level || 'المستوى الثالث'}`,
-    `المادة: ${subject || 'الرياضيات'}`,
-    `الموضوع: ${topic || 'ثقافة عامة'}`,
-    `نوع الأسئلة: ${finalType === 'written' ? 'كتابية (إجابة نصية قصيرة)' : 'اختيار من متعدد QCM - 4 خيارات'}`,
+    `أنت مصمم مناهج خبير للمدارس الابتدائية المغربية.`,
+    `ولّد ${finalCount} أسئلة بيداغوجية للمستوى: ${level || 'الثالث'} - المادة: ${subject || 'الرياضيات'} - الموضوع: ${topic || 'عام'}.`,
+    `النوع: ${finalType === 'written' ? 'كتابي (إجابة نصية)' : 'اختيار من متعدد QCM - 4 خيارات بالضبط'}.`,
     pedagogicalNote,
-    `أسلوب مغربي لطيف: استلهم الأسماء المغربية (يوسف، أمينة، فاطمة) والوجبات المغربية (طاجين، كسكس).`,
-    ``,
-    `⚠️ مهم جداً: يجب أن يكون correctAnswer مطابقاً تماماً لأحد عناصر options.`,
-    ``,
-    `أجب بـ JSON مصفوفة نظيفة فقط، كل عنصر بهذا الشكل:`,
-    `{ "text": "...", "options": ["أ", "ب", "ج", "د"], "correctAnswer": "أ", "points": 1000, "type": "mcq" }`,
+    `أجب بـ JSON مصفوفة نظيفة فقط (بدون markdown):`,
+    `[{"text":"...","options":["أ","ب","ج","د"],"correctAnswer":"أ","points":1000,"type":"mcq"}]`,
+    `correctAnswer يجب أن يطابق تماماً أحد عناصر options.`,
   ].filter(Boolean).join('\n');
 
   try {
@@ -72,44 +78,40 @@ export default async function handler(req: any, res: any) {
             },
           },
           systemInstruction: {
-            parts: [{
-              text: 'أنت مصمم مناهج خبير للمدارس الابتدائية المغربية. أجب بـ JSON مصفوفة نظيفة فقط، بدون أي نص إضافي.',
-            }],
+            parts: [{ text: 'أجب بـ JSON مصفوفة نظيفة فقط بدون أي نص إضافي.' }],
           },
         }),
       }
     );
 
+    // جلب نص الخطأ الحقيقي من Gemini إذا فشل الطلب
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      console.error('[generate-classic-questions] Gemini API error:', errText);
+      console.error('[generate-classic-questions] Gemini error:', geminiRes.status, errText);
       return res.status(500).json({
         success: false,
-        error: `خطأ من Gemini API: ${geminiRes.status} — تحقق من GEMINI_API_KEY.`,
+        error: `Gemini API رجع خطأ ${geminiRes.status}: ${errText.slice(0, 200)}`,
       });
     }
 
     const geminiData = await geminiRes.json();
     const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
-      return res.status(500).json({ success: false, error: 'Gemini لم يُرجع محتوى.' });
+      return res.status(500).json({ success: false, error: 'Gemini لم يُرجع محتوى. تحقق من إعدادات المشروع في Google AI Studio.' });
     }
 
     const clean = rawText.replace(/```json|```/g, '').trim();
     const questions = JSON.parse(clean);
 
-    // ── تحقق: correctAnswer يجب أن يوجد ضمن options ──
     const validated = questions.map((q: any) => {
       const opts: string[] = Array.isArray(q.options) ? q.options : [];
-      const match = opts.find(
-        (o: string) => o.trim().toLowerCase() === (q.correctAnswer || '').trim().toLowerCase()
-      );
+      const match = opts.find((o: string) => o.trim() === (q.correctAnswer || '').trim());
       return { ...q, correctAnswer: match || opts[0] || q.correctAnswer };
     });
 
     return res.status(200).json({ success: true, questions: validated });
   } catch (err: any) {
-    console.error('[generate-classic-questions]', err);
-    return res.status(500).json({ success: false, error: err.message || 'خطأ داخلي.' });
+    console.error('[generate-classic-questions] catch:', err);
+    return res.status(500).json({ success: false, error: `خطأ داخلي: ${err.message}` });
   }
 }
