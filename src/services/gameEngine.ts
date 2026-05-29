@@ -42,11 +42,11 @@ export async function generateQuestionsFromAI(
       }),
     });
 
+    // قراءة body الخطأ الحقيقي بدل statusText الفارغ دائماً
+    const data = await response.json().catch(() => ({ success: false, error: `HTTP ${response.status}` }));
     if (!response.ok) {
-      throw new Error(`خطأ في استجابة خادم API: ${response.statusText}`);
+      throw new Error(data.error || `خطأ في الخادم (${response.status})`);
     }
-
-    const data = await response.json();
     if (data.success && Array.isArray(data.questions)) {
       return data.questions.map((q: any) => ({
         text: q.text || 'سؤال تفاعلي جديد',
