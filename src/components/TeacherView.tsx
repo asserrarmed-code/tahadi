@@ -155,14 +155,20 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     setLaunchError(null);
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
 
+    // ✅ timeout 8s: Firebase قد يعلق بدون خطأ عند ضعف الاتصال
+    const saveWithTimeout = () => Promise.race([
+      savePoolToFirebase(randomPin, poolQuestions),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Firebase timeout — تحقق من VITE_FIREBASE_DATABASE_URL وقواعد RTDB')), 8000)
+      ),
+    ]);
+
     try {
-      // ✅ حفظ في Firebase أولاً — بعدها فقط نُظهر الـ PIN للأستاذ
-      await savePoolToFirebase(randomPin, poolQuestions);
+      await saveWithTimeout();
       localStorage.setItem('school_teacher_active_room_pin', randomPin);
       setRoomPIN(randomPin);
-      // roomVal سيُضبط تلقائياً عبر onValue listener بعد نجاح الكتابة
     } catch (err: any) {
-      setLaunchError('فشل حفظ الغرفة في Firebase. تحقق من قواعد Realtime Database و متغيرات VITE_FIREBASE_ في Vercel.');
+      setLaunchError(err.message || 'فشل الاتصال بـ Firebase');
     } finally {
       setIsLaunching(false);
     }
