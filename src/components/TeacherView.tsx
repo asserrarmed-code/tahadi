@@ -295,12 +295,32 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
 
   // Active Live Competition Admin cockpit
   if (roomPIN) {
-    // roomVal قد يكون null مؤقتاً ريثما يتصل Firebase — نعرض الكوكبت فوراً
     const activeQ = roomVal?.currentQuestion ?? null;
     const teamsList = roomVal?.teams ? Object.values(roomVal.teams) : [];
     const responsesList = roomVal?.responses ? Object.values(roomVal.responses) : [];
 
-
+    // ✅ guard: إذا roomVal لا يزال null (Firebase يتصل...) نعرض شاشة انتظار
+    if (!roomVal) {
+      return (
+        <div className="w-full min-h-[70vh] flex flex-col items-center justify-center gap-5 text-right" dir="rtl">
+          <div className="text-7xl animate-spin">⚙️</div>
+          <h2 className="text-2xl font-black text-amber-400">جاري الاتصال بـ Firebase…</h2>
+          <p className="text-slate-300 text-base">رمز الغرفة: <span className="text-amber-300 font-mono text-2xl font-black tracking-widest">{roomPIN}</span></p>
+          <p className="text-slate-500 text-sm max-w-sm text-center">
+            إذا استمر الانتظار، تحقق من متغيرات Firebase في Vercel ثم أعِد النشر.
+          </p>
+          <button
+            onClick={() => {
+              localStorage.removeItem('school_teacher_active_room_pin');
+              window.location.reload();
+            }}
+            className="mt-2 px-5 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-xl font-bold text-sm transition-all"
+          >
+            إلغاء والعودة
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="w-full max-w-7xl mx-auto px-4 py-6 md:py-8 text-right space-y-6" dir="rtl">
