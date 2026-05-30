@@ -27,16 +27,30 @@ export default async function handler(req: any, res: any) {
 
   const isIslamic = subject?.includes('إسلامية') || subject?.includes('اسلامية');
   const isArabicSixth = (subject?.includes('عربية') || subject?.includes('عربي')) && level?.includes('السادس');
-  let pedagogicalNote = '';
-  if (isIslamic) pedagogicalNote = 'استخدم "الفرائض" بدلاً من "الأركان".';
-  else if (isArabicSixth) pedagogicalNote = 'تجنب التوكيد والمستثنى. ركّز على المفعول المطلق، لأجله، التمييز.';
+  let note = '';
+  if (isIslamic) note = 'استخدم "الفرائض" وليس "الأركان".';
+  else if (isArabicSixth) note = 'تجنب أسئلة التوكيد والمستثنى.';
 
-  const prompt = [
-    `ولّد 3 أسئلة بيداغوجية للمستوى: ${level || 'الثالث'} - المادة: ${subject || 'الرياضيات'} - الموضوع: ${topic || 'عام'}.`,
-    `إرشادات: ${instructions || 'مشوقة وبسيطة'}. ${pedagogicalNote}`,
-    `أجب بـ JSON مصفوفة: [{"text":"...","options":["أ","ب","ج","د"],"correctIndex":0,"points":1000,"timeLimit":20,"subComponent":"..."}]`,
-    `correctIndex هو رقم 0-3 للخيار الصحيح.`,
-  ].filter(Boolean).join('\n');
+  const prompt = `أنت مصمم مناهج للمدارس الابتدائية المغربية.
+ولّد بالضبط 3 أسئلة لـ:
+- المستوى: ${level || 'الثالث'}
+- المادة: ${subject || 'الرياضيات'}
+- الموضوع: ${topic || 'عام'}
+- إرشادات: ${instructions || 'مشوقة وبسيطة'}
+${note}
+
+⚠️ أرجع JSON فقط — مصفوفة بدون markdown:
+[
+  {
+    "text": "نص السؤال",
+    "options": ["أ", "ب", "ج", "د"],
+    "correctIndex": 0,
+    "points": 1000,
+    "timeLimit": 20,
+    "subComponent": "المكون الفرعي"
+  }
+]
+correctIndex هو رقم الخيار الصحيح (0 إلى 3).`;
 
   try {
     const geminiRes = await fetch(
@@ -46,39 +60,24 @@ export default async function handler(req: any, res: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  text:         { type: 'STRING' },
-                  options:      { type: 'ARRAY', items: { type: 'STRING' } },
-                  correctIndex: { type: 'INTEGER' },
-                  points:       { type: 'INTEGER' },
-                  timeLimit:    { type: 'INTEGER' },
-                  subComponent: { type: 'STRING' },
-                },
-                required: ['text', 'options', 'correctIndex', 'points', 'timeLimit'],
-              },
-            },
-          },
-          systemInstruction: { parts: [{ text: 'أجب بـ JSON نظيف فقط.' }] },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
         }),
       }
     );
 
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      return res.status(500).json({ success: false, error: `Gemini ${geminiRes.status}: ${errText.slice(0, 200)}` });
+      return res.status(500).json({ success: false, error: `Gemini ${geminiRes.status}: ${errText.slice(0, 300)}` });
     }
 
     const data = await geminiRes.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) return res.status(500).json({ success: false, error: 'Gemini لم يُرجع محتوى.' });
+    const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(500).json({ success: false, error: `Gemini أرجع نصاً غير JSON: ${rawText.slice(0, 200)}` });
+    }
 
-    const questions = JSON.parse(rawText.replace(/```json|```/g, '').trim());
+    const questions = JSON.parse(jsonMatch[0]);
     return res.status(200).json({ success: true, questions });
   } catch (err: any) {
     return res.status(500).json({ success: false, error: `خطأ داخلي: ${err.message}` });
