@@ -1,24 +1,16 @@
-// Vercel Serverless Function — Gemini REST API (لا SDK)
-
 async function parseBody(req: any): Promise<any> {
-  // Vercel يحلل الـ body تلقائياً — لكن نضيف fallback يدوي للأمان
   if (req.body && typeof req.body === 'object') return req.body;
   return new Promise((resolve) => {
     let data = '';
     req.on('data', (chunk: any) => { data += chunk; });
-    req.on('end', () => {
-      try { resolve(JSON.parse(data)); }
-      catch { resolve({}); }
-    });
+    req.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve({}); } });
   });
 }
 
 export default async function handler(req: any, res: any) {
-  // CORS headers لضمان قبول الطلبات من frontend
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed' });
 
@@ -26,7 +18,7 @@ export default async function handler(req: any, res: any) {
   if (!apiKey) {
     return res.status(500).json({
       success: false,
-      error: 'GEMINI_API_KEY غير موجود في Vercel Environment Variables. أضفه في: Settings → Environment Variables → اسم المتغير: GEMINI_API_KEY',
+      error: 'GEMINI_API_KEY غير موجود في Vercel. أضفه في Settings → Environment Variables باسم: GEMINI_API_KEY',
     });
   }
 
@@ -37,20 +29,30 @@ export default async function handler(req: any, res: any) {
 
   const isIslamic = subject?.includes('إسلامية') || subject?.includes('اسلامية');
   const isArabicSixth = (subject?.includes('عربية') || subject?.includes('عربي')) && level?.includes('السادس');
+  let note = '';
+  if (isIslamic) note = 'استخدم مصطلح "الفرائض" وليس "الأركان".';
+  else if (isArabicSixth) note = 'تجنب تماماً أسئلة التوكيد والمستثنى.';
 
-  let pedagogicalNote = '';
-  if (isIslamic) pedagogicalNote = 'استخدم "الفرائض" بدلاً من "الأركان" دائماً.';
-  else if (isArabicSixth) pedagogicalNote = 'تجنب "التوكيد" و"المستثنى". ركّز على المفعول المطلق، لأجله، التمييز.';
+  // ✅ بدون responseSchema — نطلب JSON مباشرة في النص
+  const prompt = `أنت مصمم مناهج للمدارس الابتدائية المغربية.
+ولّد بالضبط ${finalCount} أسئلة لـ:
+- المستوى: ${level || 'الثالث'}
+- المادة: ${subject || 'الرياضيات'}  
+- الموضوع: ${topic || 'عام'}
+- النوع: ${finalType === 'written' ? 'كتابي' : 'اختيار من متعدد (4 خيارات)'}
+${note}
 
-  const prompt = [
-    `أنت مصمم مناهج خبير للمدارس الابتدائية المغربية.`,
-    `ولّد ${finalCount} أسئلة بيداغوجية للمستوى: ${level || 'الثالث'} - المادة: ${subject || 'الرياضيات'} - الموضوع: ${topic || 'عام'}.`,
-    `النوع: ${finalType === 'written' ? 'كتابي (إجابة نصية)' : 'اختيار من متعدد QCM - 4 خيارات بالضبط'}.`,
-    pedagogicalNote,
-    `أجب بـ JSON مصفوفة نظيفة فقط (بدون markdown):`,
-    `[{"text":"...","options":["أ","ب","ج","د"],"correctAnswer":"أ","points":1000,"type":"mcq"}]`,
-    `correctAnswer يجب أن يطابق تماماً أحد عناصر options.`,
-  ].filter(Boolean).join('\n');
+⚠️ أرجع JSON فقط — مصفوفة بدون أي نص قبلها أو بعدها ولا markdown:
+[
+  {
+    "text": "نص السؤال هنا",
+    "options": ["الخيار الأول", "الخيار الثاني", "الخيار الثالث", "الخيار الرابع"],
+    "correctAnswer": "الخيار الأول",
+    "points": 1000,
+    "type": "${finalType}"
+  }
+]
+تأكد: correctAnswer يطابق تماماً أحد عناصر options.`;
 
   try {
     const geminiRes = await fetch(
@@ -61,48 +63,37 @@ export default async function handler(req: any, res: any) {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  text:          { type: 'STRING' },
-                  options:       { type: 'ARRAY', items: { type: 'STRING' } },
-                  correctAnswer: { type: 'STRING' },
-                  points:        { type: 'INTEGER' },
-                  type:          { type: 'STRING' },
-                },
-                required: ['text', 'options', 'correctAnswer', 'points', 'type'],
-              },
-            },
-          },
-          systemInstruction: {
-            parts: [{ text: 'أجب بـ JSON مصفوفة نظيفة فقط بدون أي نص إضافي.' }],
+            temperature: 0.7,
+            maxOutputTokens: 2048,
           },
         }),
       }
     );
 
-    // جلب نص الخطأ الحقيقي من Gemini إذا فشل الطلب
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
-      console.error('[generate-classic-questions] Gemini error:', geminiRes.status, errText);
+      console.error('[generate-classic-questions]', geminiRes.status, errText);
       return res.status(500).json({
         success: false,
-        error: `Gemini API رجع خطأ ${geminiRes.status}: ${errText.slice(0, 200)}`,
+        error: `Gemini API خطأ ${geminiRes.status}: ${errText.slice(0, 300)}`,
       });
     }
 
-    const geminiData = await geminiRes.json();
-    const rawText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const data = await geminiRes.json();
+    const rawText: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
     if (!rawText) {
-      return res.status(500).json({ success: false, error: 'Gemini لم يُرجع محتوى. تحقق من إعدادات المشروع في Google AI Studio.' });
+      return res.status(500).json({ success: false, error: 'Gemini لم يُرجع نصاً. تحقق من المفتاح وحدود الاستخدام.' });
     }
 
-    const clean = rawText.replace(/```json|```/g, '').trim();
-    const questions = JSON.parse(clean);
+    // استخراج JSON من النص حتى لو كان محاطاً بـ markdown
+    const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      return res.status(500).json({ success: false, error: `Gemini أرجع نصاً غير JSON: ${rawText.slice(0, 200)}` });
+    }
 
+    const questions = JSON.parse(jsonMatch[0]);
+
+    // تحقق: correctAnswer يجب أن يطابق أحد الخيارات
     const validated = questions.map((q: any) => {
       const opts: string[] = Array.isArray(q.options) ? q.options : [];
       const match = opts.find((o: string) => o.trim() === (q.correctAnswer || '').trim());
