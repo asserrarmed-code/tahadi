@@ -162,15 +162,7 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
       setRoomPIN(randomPin);
       // roomVal سيُضبط تلقائياً عبر onValue listener بعد نجاح الكتابة
     } catch (err: any) {
-      setLaunchError(
-        '❌ فشل حفظ الغرفة في Firebase. تحقق من:
-' +
-        '1. متغيرات البيئة في Vercel (VITE_FIREBASE_*)
-' +
-        '2. قواعد Firebase RTDB: اذهب لـ Realtime Database → Rules وتأكد أنها:
-' +
-        '{"rules":{".read":true,".write":true}}'
-      );
+      setLaunchError('فشل حفظ الغرفة في Firebase. تحقق من قواعد Realtime Database و متغيرات VITE_FIREBASE_ في Vercel.');
     } finally {
       setIsLaunching(false);
     }
