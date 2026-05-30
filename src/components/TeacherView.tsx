@@ -51,6 +51,8 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
     return localStorage.getItem('school_teacher_active_room_pin') || '';
   });
   const [roomVal, setRoomVal] = useState<RoomState | null>(null);
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState<string | null>(null);
 
   // Form parameters
   const [selectedLevel, setSelectedLevel] = useState('المستوى السادس');
@@ -149,27 +151,28 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
       return;
     }
 
+    setIsLaunching(true);
+    setLaunchError(null);
     const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
-    localStorage.setItem('school_teacher_active_room_pin', randomPin);
 
-    // ✅ ضبط roomVal محلياً فوراً — الكوكبت يظهر بدون انتظار Firebase
-    const initialRoom: RoomState = {
-      pin: randomPin,
-      status: 'setup',
-      currentQuestionIndex: -1,
-      questionsPool: poolQuestions,
-      currentQuestion: null,
-      responses: undefined,
-      teams: {}
-    };
-    setRoomVal(initialRoom);
-    setRoomPIN(randomPin);
-
-    // محاولة المزامنة مع Firebase في الخلفية (اختياري)
     try {
+      // ✅ حفظ في Firebase أولاً — بعدها فقط نُظهر الـ PIN للأستاذ
       await savePoolToFirebase(randomPin, poolQuestions);
+      localStorage.setItem('school_teacher_active_room_pin', randomPin);
+      setRoomPIN(randomPin);
+      // roomVal سيُضبط تلقائياً عبر onValue listener بعد نجاح الكتابة
     } catch (err: any) {
-      console.warn("تحذير Firebase (غير حرج - التطبيق يعمل محلياً):", err.message);
+      setLaunchError(
+        '❌ فشل حفظ الغرفة في Firebase. تحقق من:
+' +
+        '1. متغيرات البيئة في Vercel (VITE_FIREBASE_*)
+' +
+        '2. قواعد Firebase RTDB: اذهب لـ Realtime Database → Rules وتأكد أنها:
+' +
+        '{"rules":{".read":true,".write":true}}'
+      );
+    } finally {
+      setIsLaunching(false);
     }
   };
 
@@ -771,14 +774,22 @@ export default function TeacherView({ onBackToMain }: TeacherViewProps) {
               سيقوم خادم الغرف بتسجيل PIN فريد. وجه تلاميذك وشاشة العرض الكبرى للدخول بالرقم واللحاق بالدورة!
             </p>
 
+            {launchError && (
+              <div className="bg-red-900/40 border border-red-500/50 rounded-xl p-3 text-right">
+                <p className="text-red-300 text-xs font-bold whitespace-pre-line leading-relaxed">{launchError}</p>
+              </div>
+            )}
+
             <button
               onClick={handleLaunchRoom}
-              disabled={poolQuestions.length === 0}
+              disabled={poolQuestions.length === 0 || isLaunching}
               className={`w-full py-4 rounded-xl text-slate-950 font-black text-xs transition-all ${
-                poolQuestions.length > 0 ? 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:scale-[1.01] cursor-pointer' : 'bg-slate-950 border border-indigo-950 text-slate-550'
+                poolQuestions.length > 0 && !isLaunching
+                  ? 'bg-gradient-to-r from-emerald-400 to-teal-400 hover:scale-[1.01] cursor-pointer'
+                  : 'bg-slate-700 text-slate-400 cursor-not-allowed'
               }`}
             >
-              تفعيل الغرفة وسحب رمز PIN 🌐📡
+              {isLaunching ? '⏳ جاري الاتصال بـ Firebase…' : 'تفعيل الغرفة وسحب رمز PIN 🌐📡'}
             </button>
 
             <button onClick={onBackToMain} className="text-xs text-slate-400 hover:text-white underline block mx-auto font-black">
